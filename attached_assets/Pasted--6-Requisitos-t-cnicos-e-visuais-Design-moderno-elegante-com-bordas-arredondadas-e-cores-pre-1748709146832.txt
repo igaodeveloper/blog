@@ -1,0 +1,70 @@
+## 6. Requisitos técnicos e visuais
+
+- Design moderno, elegante, com bordas arredondadas e cores preto, roxo (#8a2be2), branco e cinza claro
+- Responsividade total para dispositivos móveis e desktops
+- Animações fluídas em botões, transições e carregamentos
+- Código limpo, modular e bem comentado
+- Boas práticas de acessibilidade (aria-labels, keyboard navigation)
+- Segurança básica na autenticação e armazenamento de dados
+- Comentários em tempo real e chat usando Firebase Realtime Database ou Firestore
+- Monetização via pagamentos online (Stripe/Mercado Pago)
+
+---
+
+## 7. Fluxos de usuário
+
+- Novo usuário: acesso → cadastro → introdução → blog → perfil → chat → premium
+- Usuário existente: login → introdução (se novo) → blog → perfil → chat → premium
+- Visitante: navega artigos → tenta acessar perfil/chat/premium → redirecionado para login
+- Usuário autenticado troca idioma, tema e atualiza perfil com feedback animado
+- Usuário compra conteúdo premium e passa a ter acesso liberado
+
+---
+
+## 8. Logo 3D para o Blog
+
+### Nome sugerido (fácil pronúncia e chiclete):
+
+- CodeLoom
+- DevNest
+- ByteVibe
+- Loopify
+- PixelPulse
+- StackHive
+
+### Conceito do Logo 3D:
+
+- Ícone estilizado com símbolos de código {}, </> ou nós de rede/comunidade em 3D
+- Uso das cores do projeto: preto, roxo (#8a2be2), branco e cinza claro
+- Efeito de glow roxo vibrante para destacar volume e profundidade
+- Fundo preto ou gradiente cinza escuro
+- Nome do blog em fonte moderna, arredondada e branca ao lado ou abaixo do ícone
+- Textura leve para riqueza visual sem perder simplicidade
+- Animação suave opcional: brilho pulsante ou rotação leve
+
+---
+
+## 9. Instruções extras para o logo (para geradores 3D ou design)
+
+- Criar logo 3D rico em detalhes com os elementos acima
+- Exportar em SVG, PNG e versões animadas para web
+- Manter estética profissional, vibrante e tecnológica
+
+---
+
+## 10. IMPORTANTE
+
+- NÃO OMITIR nenhuma tela, funcionalidade, fluxo, ou requisito acima
+- INCLUIR todas as animações e interatividade descritas
+- GARANTIR visual moderno com esquema de cores e bordas arredondadas
+- IMPLEMENTAR sistema multilíngue completo PT/EN
+- AUTENTICAÇÃO com email/senha e login social (Google, LinkedIn)
+- CHAT em tempo real e comentários dinâmicos
+- PERFIL completo e interativo com upload de avatar
+- MONETIZAÇÃO via pagamento online
+- INCLUIR o desenvolvimento do logo 3D e nomes sugeridos
+
+---
+
+Copie e cole este prompt integral no REPLIT para gerar o projeto COMPLETO do blog com logo 3D e nome marcante conforme especificado.
+
