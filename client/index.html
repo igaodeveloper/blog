@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>CodeLoom - Blog de Programação e Tecnologia</title>
+    <meta name="description" content="Sua comunidade de programação e tecnologia. Aprenda, compartilhe e conecte-se com desenvolvedores do mundo todo." />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://codeloom.dev/" />
+    <meta property="og:title" content="CodeLoom - Blog de Programação e Tecnologia" />
+    <meta property="og:description" content="Sua comunidade de programação e tecnologia. Aprenda, compartilhe e conecte-se com desenvolvedores do mundo todo." />
+    <meta property="og:image" content="https://codeloom.dev/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://codeloom.dev/" />
+    <meta property="twitter:title" content="CodeLoom - Blog de Programação e Tecnologia" />
+    <meta property="twitter:description" content="Sua comunidade de programação e tecnologia. Aprenda, compartilhe e conecte-se com desenvolvedores do mundo todo." />
+    <meta property="twitter:image" content="https://codeloom.dev/og-image.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238a2be2'><path d='M8 3a2 2 0 0 0-2 2v4.586l-2.293-2.293a1 1 0 0 0-1.414 1.414L5 11.414V16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8z'/></svg>" />
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    
+    <!-- Theme color -->
+    <meta name="theme-color" content="#8a2be2" />
+    
+    <!-- Apple touch icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238a2be2'><path d='M8 3a2 2 0 0 0-2 2v4.586l-2.293-2.293a1 1 0 0 0-1.414 1.414L5 11.414V16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8z'/></svg>" />
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="data:application/json,{'name':'CodeLoom','short_name':'CodeLoom','description':'Blog de Programação e Tecnologia','start_url':'/','display':'standalone','background_color':'%23000000','theme_color':'%238a2be2','icons':[{'src':'data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%238a2be2\"><path d=\"M8 3a2 2 0 0 0-2 2v4.586l-2.293-2.293a1 1 0 0 0-1.414 1.414L5 11.414V16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8z\"/></svg>','sizes':'192x192','type':'image/svg+xml'}]}" />
+    
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "CodeLoom",
+      "description": "Blog de Programação e Tecnologia",
+      "url": "https://codeloom.dev",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://codeloom.dev/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <style>
+      /* Critical CSS for loading state */
+      body {
+        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        background-color: #000000;
+        color: #ffffff;
+        overflow-x: hidden;
+      }
+      
+      /* Loading spinner */
+      .loading-spinner {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(138, 43, 226, 0.3);
+        border-radius: 50%;
+        border-top-color: #8a2be2;
+        animation: spin 1s ease-in-out infinite;
+        z-index: 9999;
+      }
+      
+      @keyframes spin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+      }
+
+      /* Hide loading spinner when app loads */
+      #root:not(:empty) + .loading-spinner {
+        display: none;
+      }
+
+      /* Smooth transitions */
+      * {
+        box-sizing: border-box;
+      }
+
+      /* Custom scrollbar for webkit browsers */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1a1a1a;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #4a4a4a;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #8a2be2;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div class="loading-spinner"></div>
+    
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Development banner script -->
+    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>

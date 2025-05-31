@@ -1,0 +1,101 @@
+Criar um blog moderno, atraente, viciante e funcional focado em programação e tecnologia, com todas as funcionalidades e telas listadas abaixo, além do desenvolvimento de um logo 3D rico em detalhes com cores do projeto e sugestão de nome marcante e fácil de pronunciar.
+
+---
+
+## 1. Configuração inicial
+- Projeto React (ou Next.js) com TailwindCSS configurado
+- React Router para rotas (ou Next.js routing)
+- Firebase ou Supabase para autenticação e banco de dados
+- react-i18next para multilíngue (Português e Inglês)
+- Framer Motion para animações
+- Lottie para animações interativas
+- tsParticles para fundo animado de partículas
+- Stripe/Mercado Pago para monetização (pagamentos)
+
+---
+
+## 2. Layout global
+- Navbar fixa com logo, links: Home, Chat, Perfil, Premium, Login/Logout, troca de idioma (PT/EN)
+- Footer com links úteis e créditos
+- Tema escuro padrão, esquema de cores preto, roxo (#8a2be2), branco e cinza claro
+- Layout responsivo e com cantos arredondados suaves em cards e botões
+- Transições suaves e animações em hover/focus
+
+---
+
+## 3. Telas e fluxos
+
+### 3.1 Tela de Login
+- Formulário com campos email e senha
+- Botões para login via Google e LinkedIn (OAuth)
+- Link para “Esqueci minha senha”
+- Botão para acessar cadastro
+- Validação e feedback visual para erros
+
+### 3.2 Tela de Cadastro
+- Formulário com nome, email, senha, confirmar senha
+- Botões sociais Google e LinkedIn
+- Link para voltar ao login
+- Validação de senha forte e confirmação
+
+### 3.3 Tela de Recuperação de Senha
+- Campo para email
+- Envio de link de recuperação
+- Feedback de sucesso/erro
+
+### 3.4 Tela de Introdução / Boas-vindas (aparece apenas para novos usuários)
+- Fundo animado com partículas usando tsParticles
+- Animação Lottie interativa com mensagem motivacional de boas-vindas
+- Botão “Começar Agora” que redireciona para a home do blog
+- Opção para pular e não mostrar mais
+
+### 3.5 Tela Inicial do Blog (Home)
+- Lista paginada de artigos (imagem, título, resumo, tags)
+- Busca avançada e filtros por categoria, popularidade, data
+- Botões para login/logout, troca de idioma
+- Layout moderno e atraente, animações ao carregar e hover em cards
+
+### 3.6 Tela de Artigo
+- Conteúdo completo do artigo com texto, imagens e código formatado (syntax highlight)
+- Botões: curtir, comentar (com respostas aninhadas), compartilhar (redes sociais)
+- Comentários em tempo real, carregados dinamicamente
+- Links afiliados embutidos no texto
+- Botão para voltar para a lista de artigos
+
+### 3.7 Tela de Chat Comunitário
+- Chat global em tempo real com atualização instantânea
+- Envio de mensagens, exibição de mensagens antigas com scroll infinito
+- Status de usuários online/offline
+- Interface multilíngue e responsiva
+- Moderação básica (botão para reportar mensagens)
+
+### 3.8 Tela de Perfil do Usuário
+- Visualização e edição de avatar (upload drag & drop + preview + remoção)
+- Nome editável inline, email fixo
+- Botões: editar perfil (modal), logout, redefinir senha
+- Estatísticas do usuário: artigos curtidos, comentários feitos, dias ativos
+- Gráfico de atividade semanal
+- Informações básicas editáveis (biografia, website, LinkedIn, GitHub)
+- Preferências do usuário: idioma, tema claro/escuro, notificações
+- Histórico paginado de curtidas e comentários recentes
+- Feedbacks animados para ações de salvar e upload
+
+### 3.9 Tela Área Premium / Conteúdo Pago
+- Listagem de conteúdos exclusivos para assinantes
+- Integração com Stripe ou Mercado Pago para compra
+- Controle de acesso e feedback pós-compra
+
+### 3.10 Tela de Erro / 404
+- Mensagem amigável e botão para voltar para home
+
+---
+
+## 4. Funcionalidades adicionais
+- Sistema multilíngue completo com react-i18next (Português e Inglês)
+- Animações globais com Framer Motion, Lottie e tsParticles
+- Controle de rotas protegidas para chat, perfil e conteúdo premium
+- Persistência de sessão e preferências via localStorage ou Firebase
+- Upload de avatar com validação de formatos e tamanho
+- Feedback visual e animações em todas as interações (botões, formulários, carregamento)
+- Moderação básica no chat (reportar mensagens)
+
