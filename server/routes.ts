@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import Stripe from "stripe";
-import { storage } from "./storage";
+import { storage, gerarArtigoOriginalIA } from "./storage";
 import { insertUserSchema, insertCommentSchema, insertChatMessageSchema } from "@shared/schema";
 import express from "express";
 
@@ -583,6 +583,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(requests);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Endpoint para gerar artigo original com IA
+  app.post("/api/generate-article", async (req, res) => {
+    try {
+      const { tema, categoria, authorId } = req.body;
+      if (!tema || !categoria || !authorId) {
+        return res.status(400).json({ message: "tema, categoria e authorId são obrigatórios" });
+      }
+      const artigo = await gerarArtigoOriginalIA(tema, categoria, authorId);
+      const artigoSalvo = await storage.createArticle(artigo);
+      res.json(artigoSalvo);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

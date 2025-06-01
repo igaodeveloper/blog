@@ -1,6 +1,7 @@
 import { users, articles, comments, likes, chatMessages, userStats, type User, type InsertUser, type Article, type InsertArticle, type Comment, type InsertComment, type InsertChatMessage, type ChatMessage, type UserStats } from "@shared/schema";
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import OpenAI from "openai";
 
 initializeApp({
   credential: applicationDefault(),
@@ -8,6 +9,8 @@ initializeApp({
 });
 
 const db = getFirestore();
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export interface IStorage {
   // User operations
@@ -140,6 +143,64 @@ export class MemStorage implements IStorage {
     this.users.set(2, user2);
     this.currentUserId = 3;
 
+    // Função utilitária para gerar artigos fake
+    function gerarArtigosFake(qtd: number, autores: number[]): Article[] {
+      const categorias = ["JavaScript", "Python", "DevOps", "Cloud", "Mobile", "AI", "Backend", "Frontend", "Data Science", "UI/UX"];
+      const titulos = [
+        "Como dominar ",
+        "Guia prático de ",
+        "Tendências em ",
+        "O futuro de ",
+        "Erros comuns em ",
+        "Dicas avançadas de ",
+        "Introdução a ",
+        "Por que aprender ",
+        "Desmistificando ",
+        "Boas práticas em "
+      ];
+      const temas = [
+        "React", "Node.js", "TypeScript", "Kubernetes", "Docker", "Flutter", "Next.js", "GraphQL", "AWS", "Firebase", "Machine Learning", "CSS", "HTML", "PostgreSQL", "MongoDB"
+      ];
+      const imagens = [
+        "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300",
+        "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300",
+        "https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300",
+        "https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300",
+        "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300",
+        "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300",
+        "https://images.unsplash.com/photo-1465101178521-c1a9136a3b99?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300",
+        "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300"
+      ];
+      const artigos: Article[] = [];
+      for (let i = 0; i < qtd; i++) {
+        const tema = temas[Math.floor(Math.random() * temas.length)];
+        const categoria = categorias[Math.floor(Math.random() * categorias.length)];
+        const tituloBase = titulos[Math.floor(Math.random() * titulos.length)];
+        const titulo = `${tituloBase}${tema}`;
+        const slug = `${tituloBase.replace(/\s+/g, "-").toLowerCase()}${tema.toLowerCase()}-${i+3}`.replace(/[^a-z0-9\-]/g, "");
+        const imageUrl = imagens[Math.floor(Math.random() * imagens.length)];
+        const autor = autores[i % autores.length];
+        artigos.push({
+          id: i + 3,
+          title: titulo,
+          slug: slug,
+          content: `Conteúdo completo sobre ${tema} e ${categoria}. Dicas, exemplos e melhores práticas para 2024.`,
+          excerpt: `Resumo do artigo sobre ${tema} (${categoria}). Aprenda os principais conceitos e técnicas modernas.`,
+          imageUrl,
+          category: categoria,
+          tags: [tema, categoria],
+          isPremium: Math.random() < 0.2, // 20% premium
+          authorId: autor,
+          viewCount: Math.floor(Math.random() * 200),
+          likeCount: Math.floor(Math.random() * 100),
+          publishedAt: new Date(Date.now() - Math.floor(Math.random() * 1000000000)),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      return artigos;
+    }
+
     // Create sample articles
     const article1: Article = {
       id: 1,
@@ -180,6 +241,13 @@ export class MemStorage implements IStorage {
     this.articles.set(1, article1);
     this.articles.set(2, article2);
     this.currentArticleId = 3;
+
+    // Gerar e adicionar 30 artigos fake
+    const artigosFake = gerarArtigosFake(30, [1, 2]);
+    for (const artigo of artigosFake) {
+      this.articles.set(artigo.id, artigo);
+      this.currentArticleId = artigo.id + 1;
+    }
 
     // Create sample user stats
     const stats1: UserStats = {
@@ -452,46 +520,29 @@ export class MemStorage implements IStorage {
   }
 
   // --- CONEXÕES (amizades estilo LinkedIn) ---
-  async createConnectionRequest(userId: number, targetUserId: number) {
-    // Cria convite se não existir
-    const existing = await this.connectionsRef
-      .where("userId", "==", userId)
-      .where("targetUserId", "==", targetUserId)
-      .get();
-    if (!existing.empty) throw new Error("Convite já enviado");
-    const doc = await this.connectionsRef.add({
-      userId,
-      targetUserId,
-      status: "pending",
-      createdAt: new Date(),
-    });
-    return { id: doc.id, userId, targetUserId, status: "pending", createdAt: new Date() };
+  async createConnectionRequest(userId: number, targetUserId: number): Promise<any> {
+    // Em memória: não implementado
+    return { id: `${userId}-${targetUserId}`, userId, targetUserId, status: "pending", createdAt: new Date() };
   }
 
-  async acceptConnectionRequest(id: string) {
-    await this.connectionsRef.doc(id).update({ status: "accepted" });
+  async acceptConnectionRequest(id: string): Promise<any> {
+    // Em memória: não implementado
     return { success: true };
   }
 
-  async rejectConnectionRequest(id: string) {
-    await this.connectionsRef.doc(id).update({ status: "rejected" });
+  async rejectConnectionRequest(id: string): Promise<any> {
+    // Em memória: não implementado
     return { success: true };
   }
 
-  async getUserConnections(userId: number) {
-    // Conexões aceitas
-    const sent = await this.connectionsRef.where("userId", "==", userId).where("status", "==", "accepted").get();
-    const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "accepted").get();
-    return [
-      ...sent.docs.map(d => this.docToObj(d)),
-      ...received.docs.map(d => this.docToObj(d)),
-    ];
+  async getUserConnections(userId: number): Promise<any[]> {
+    // Em memória: não implementado
+    return [];
   }
 
-  async getUserPendingRequests(userId: number) {
-    // Convites recebidos pendentes
-    const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "pending").get();
-    return received.docs.map(d => this.docToObj(d));
+  async getUserPendingRequests(userId: number): Promise<any[]> {
+    // Em memória: não implementado
+    return [];
   }
 }
 
@@ -736,4 +787,53 @@ export class FirestoreStorage implements IStorage {
     const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "pending").get();
     return received.docs.map(d => this.docToObj(d));
   }
+}
+
+export async function gerarArtigoOriginalIA(tema: string, categoria: string, autorId: number) {
+  // 1. Gerar texto do artigo
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+      { role: "system", content: "Você é um redator de blog de tecnologia. Escreva artigos originais, informativos e envolventes." },
+      { role: "user", content: `Escreva um artigo original, realista e detalhado sobre ${tema} na categoria ${categoria}. Inclua título, resumo e corpo do artigo. Responda no formato JSON: {\"title\":\"...\",\"excerpt\":\"...\",\"content\":\"...\"}` }
+    ],
+    max_tokens: 1024,
+    temperature: 0.8
+  });
+  const resposta = completion.choices[0].message.content;
+  let artigoJson: { title: string, excerpt: string, content: string };
+  try {
+    artigoJson = JSON.parse(resposta!);
+  } catch {
+    // fallback: tenta extrair manualmente
+    artigoJson = { title: `Artigo sobre ${tema}`, excerpt: resposta?.slice(0, 150) || '', content: resposta || '' };
+  }
+
+  // 2. Gerar imagem original
+  const image = await openai.images.generate({
+    prompt: `Ilustração moderna, realista, para artigo de tecnologia sobre ${tema} (${categoria}), digital art, cores vibrantes`,
+    n: 1,
+    size: "1024x1024"
+  });
+  const imageUrl = image.data && image.data[0] ? image.data[0].url : null;
+
+  // 3. Montar objeto artigo
+  const now = new Date();
+  const slug = artigoJson.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\-]/g, "");
+  return {
+    title: artigoJson.title,
+    slug,
+    content: artigoJson.content,
+    excerpt: artigoJson.excerpt,
+    imageUrl,
+    category: categoria,
+    tags: [tema, categoria],
+    isPremium: false,
+    authorId: autorId,
+    viewCount: 0,
+    likeCount: 0,
+    publishedAt: now,
+    createdAt: now,
+    updatedAt: now
+  };
 }
