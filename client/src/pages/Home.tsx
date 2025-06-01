@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Layout/Navbar";
@@ -21,8 +21,6 @@ export default function Home() {
   const limit = 9;
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [feed, setFeed] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const {
     data: articlesPages,
@@ -50,26 +48,6 @@ export default function Home() {
         article.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
-
-  useEffect(() => {
-    async function fetchFeed() {
-      setLoading(true);
-      const [postsRes, videosRes, articlesRes] = await Promise.all([
-        fetch("/api/posts").then(r => r.json()),
-        fetch("/api/videos").then(r => r.json()),
-        fetch("/api/articles").then(r => r.json()),
-      ]);
-      const all = [
-        ...postsRes.map((p: any) => ({ ...p, _type: "post" })),
-        ...videosRes.map((v: any) => ({ ...v, _type: "video" })),
-        ...articlesRes.map((a: any) => ({ ...a, _type: "article" })),
-      ];
-      all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setFeed(all);
-      setLoading(false);
-    }
-    fetchFeed();
-  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -199,78 +177,6 @@ export default function Home() {
               </div>
             )}
           </>
-        )}
-      </section>
-
-      <section className="py-16 px-4 max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="mb-12"
-        >
-          <h2 className="text-3xl font-bold mb-4 text-white">
-            {t("home.feed")}
-          </h2>
-          <p className="text-gray-400">{t("home.feedSubtitle")}</p>
-        </motion.div>
-
-        <div className="flex gap-2 mb-6">
-          <Button onClick={() => navigate("/create-article")} className="bg-purple-500">Novo Artigo</Button>
-          <Button onClick={() => navigate("/create-video")} className="bg-purple-500">Novo Vídeo</Button>
-          <Button onClick={() => navigate("/create-post")} className="bg-purple-500">Nova Postagem</Button>
-        </div>
-
-        {loading ? (
-          <div>Carregando feed...</div>
-        ) : (
-          <div className="space-y-6">
-            {feed.map(item => (
-              <div key={item._type + item.id} className="bg-gray-900 rounded-xl p-6 border border-gray-700">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xl">
-                    {item.authorId ? <span>{item.authorId}</span> : <span>?</span>}
-                  </div>
-                  <div>
-                    <div className="font-bold capitalize">{item._type}</div>
-                    <div className="text-xs text-gray-400">{new Date(item.createdAt).toLocaleString()}</div>
-                  </div>
-                </div>
-                {item._type === "post" && (
-                  <div>
-                    <div className="mb-2 whitespace-pre-line">{item.content}</div>
-                    {item.imageUrl && <img src={item.imageUrl} alt="imagem" className="rounded mb-2 max-h-64" />}
-                    {item.videoUrl && <video src={item.videoUrl} controls className="rounded mb-2 max-h-64 w-full" />}
-                  </div>
-                )}
-                {item._type === "video" && (
-                  <div>
-                    <div className="font-bold text-lg mb-1">{item.title}</div>
-                    <div className="mb-2 text-gray-300">{item.description}</div>
-                    {item.thumbnail && <img src={item.thumbnail} alt="thumb" className="rounded mb-2 max-h-64" />}
-                    {item.url && (
-                      <div className="mb-2">
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-purple-400 underline">Assistir vídeo</a>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {item._type === "article" && (
-                  <div>
-                    <div className="font-bold text-lg mb-1">{item.title}</div>
-                    <div className="mb-2 text-gray-300">{item.excerpt}</div>
-                    {item.imageUrl && <img src={item.imageUrl} alt="imagem" className="rounded mb-2 max-h-64" />}
-                    <Button onClick={() => navigate(`/article/${item.id}`)} size="sm" className="bg-purple-700">Ler artigo</Button>
-                  </div>
-                )}
-                <div className="flex gap-4 mt-4">
-                  <Button size="sm" variant="outline">Curtir</Button>
-                  <Button size="sm" variant="outline">Comentar</Button>
-                </div>
-              </div>
-            ))}
-          </div>
         )}
       </section>
 
