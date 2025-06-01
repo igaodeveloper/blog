@@ -156,7 +156,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json({ user: { ...user, password: undefined } });
+      // Gerar token JWT igual ao login padrão
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+      res.json({ user: { ...user, password: undefined }, token });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }

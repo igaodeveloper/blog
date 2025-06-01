@@ -90,6 +90,7 @@ export default function LoginForm() {
           </Button>
         </form>
 
+        {/*
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -113,6 +114,7 @@ export default function LoginForm() {
             </Button>
           </div>
         </div>
+        */}
 
         <div className="mt-6 text-center space-y-2">
           <Link href="/forgot-password">

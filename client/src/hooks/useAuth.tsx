@@ -37,6 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           const data = await response.json();
           setUser(data.user);
+          // Salvar token JWT se existir (login Google)
+          if (data.token) {
+            localStorage.setItem("token", data.token);
+          }
         } catch (error) {
           console.error("Firebase auth error:", error);
         }
@@ -61,6 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       setUser(data.user);
+      // Salvar token JWT (login padrão)
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
     } catch (error) {
       throw error;
     }

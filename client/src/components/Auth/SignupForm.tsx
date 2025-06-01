@@ -170,6 +170,7 @@ export default function SignupForm() {
           </Button>
         </form>
 
+        {/*
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -193,6 +194,7 @@ export default function SignupForm() {
             </Button>
           </div>
         </div>
+        */}
 
         <div className="mt-6 text-center">
           <p className="text-gray-400 text-sm">
