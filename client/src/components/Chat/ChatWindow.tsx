@@ -60,6 +60,9 @@ export default function ChatWindow() {
       if (data.type === "new_message") {
         setMessages(prev => [...prev, data.message]);
       }
+      if (data.type === "online_users") {
+        setOnlineUsers(data.users);
+      }
     };
 
     websocket.onclose = () => {
@@ -116,7 +119,7 @@ export default function ChatWindow() {
         <div className="flex items-center gap-2 mt-4">
           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm text-green-400">
-            127 {t("chat.onlineUsers")}
+            {onlineUsers.length} {t("chat.onlineUsers")}
           </span>
         </div>
       </CardHeader>

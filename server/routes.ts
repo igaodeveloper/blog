@@ -21,10 +21,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const wss = new WebSocketServer({ server: httpServer });
   const clients = new Map();
 
+  function broadcastOnlineUsers() {
+    const onlineUserIds = Array.from(clients.keys());
+    Promise.all(onlineUserIds.map(async (id) => await storage.getUser(Number(id))))
+      .then(users => {
+        const filtered = users.filter(Boolean);
+        clients.forEach((client) => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({ type: 'online_users', users: filtered }));
+          }
+        });
+      });
+  }
+
   wss.on('connection', (ws, req) => {
     const userId = req.url?.split('userId=')[1];
     if (userId) {
       clients.set(userId, ws);
+      broadcastOnlineUsers();
     }
 
     ws.on('message', async (data) => {
@@ -60,6 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('close', () => {
       if (userId) {
         clients.delete(userId);
+        broadcastOnlineUsers();
       }
     });
   });
