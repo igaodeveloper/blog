@@ -11,6 +11,7 @@ import { Send, Flag } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
 import { getChatWebSocketUrl } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ChatMessage {
   id: number;
@@ -33,6 +34,7 @@ export default function ChatWindow() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { t, language } = useTranslation();
+  const [status, setStatus] = useState(user?.status || "online");
 
   const { data: initialMessages, isLoading } = useQuery({
     queryKey: ["/api/chat/messages"],
@@ -79,6 +81,11 @@ export default function ChatWindow() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!user) return;
+    setStatus(user.status || "online");
+  }, [user]);
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !ws || !user) return;
@@ -98,6 +105,20 @@ export default function ChatWindow() {
       await fetch(`/api/chat/report/${messageId}`, { method: "POST" });
     } catch (error) {
       console.error("Error reporting message:", error);
+    }
+  };
+
+  const handleStatusChange = async (value: string) => {
+    setStatus(value);
+    if (user) {
+      await fetch(`/api/users/${user.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ status: value }),
+      });
     }
   };
 
@@ -193,7 +214,20 @@ export default function ChatWindow() {
 
         {/* Online Users */}
         <div className="w-64 border-l border-gray-700 p-6">
-          <h3 className="font-semibold mb-4 text-white">{t("chat.onlineList")}</h3>
+          <h3 className="font-semibold mb-4 text-white flex items-center justify-between">
+            {t("chat.onlineList")}
+            <Select value={status} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-28 h-8 text-xs bg-gray-800 border-gray-600 text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="online">🟢 Online</SelectItem>
+                <SelectItem value="busy">🔴 Ocupado</SelectItem>
+                <SelectItem value="away">🟡 Ausente</SelectItem>
+                <SelectItem value="offline">⚫ Offline</SelectItem>
+              </SelectContent>
+            </Select>
+          </h3>
           <div className="space-y-3">
             {onlineUsers.length > 0 ? (
               onlineUsers.map((user) => (
@@ -205,9 +239,12 @@ export default function ChatWindow() {
                         {user.displayName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
+                    <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${
+                      user.status === "online" ? "bg-green-500" : user.status === "busy" ? "bg-red-500" : user.status === "away" ? "bg-yellow-400" : "bg-gray-500"
+                    }`}></div>
                   </div>
                   <span className="text-sm text-white">{user.displayName}</span>
+                  <span className="text-xs text-gray-400 capitalize">{user.status}</span>
                 </div>
               ))
             ) : (

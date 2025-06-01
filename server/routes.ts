@@ -199,6 +199,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/users/:id/status", authMiddleware, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status) return res.status(400).json({ message: "Status é obrigatório" });
+      const user = await storage.updateUser(parseInt(req.params.id), { status });
+      res.json({ ...user, password: undefined });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/users/:id/stats", authMiddleware, async (req, res) => {
     try {
       const stats = await storage.getUserStats(parseInt(req.params.id));
@@ -219,6 +230,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ users: data });
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar usuários" });
+    }
+  });
+
+  app.get("/api/users/online", authMiddleware, async (req, res) => {
+    try {
+      const users = storage.getAllUsers();
+      const online = users.filter(u => u.status === "online");
+      res.json({ users: online.map(u => ({ id: u.id, displayName: u.displayName, status: u.status, avatar: u.avatar })) });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar usuários online" });
     }
   });
 

@@ -114,6 +114,7 @@ export class MemStorage implements IStorage {
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       firebaseUid: null,
+      status: "online",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -135,6 +136,7 @@ export class MemStorage implements IStorage {
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       firebaseUid: null,
+      status: "online",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -293,6 +295,7 @@ export class MemStorage implements IStorage {
       isPremium: insertUser.isPremium ?? false,
       preferredLanguage: insertUser.preferredLanguage ?? null,
       theme: insertUser.theme ?? null,
+      status: "online",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -317,10 +320,9 @@ export class MemStorage implements IStorage {
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
     const user = this.users.get(id);
     if (!user) throw new Error("User not found");
-
-    const updatedUser = { ...user, ...updates, updatedAt: new Date() };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    const updated = { ...user, ...updates, updatedAt: new Date() };
+    this.users.set(id, updated);
+    return updated;
   }
 
   async updateUserStripeInfo(id: number, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User> {
@@ -602,10 +604,11 @@ export class FirestoreStorage implements IStorage {
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
-    const ref = this.usersRef.doc(String(id));
-    await ref.update({ ...updates, updatedAt: new Date() });
-    const doc = await ref.get();
-    return this.docToObj<User>(doc);
+    const doc = await this.usersRef.doc(id.toString()).get();
+    if (!doc.exists) throw new Error("User not found");
+    await this.usersRef.doc(id.toString()).update({ ...updates, updatedAt: new Date() });
+    const updated = await this.usersRef.doc(id.toString()).get();
+    return this.docToObj<User>(updated);
   }
 
   async updateUserStripeInfo(id: number, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User> {
