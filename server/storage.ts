@@ -1,4 +1,13 @@
 import { users, articles, comments, likes, chatMessages, userStats, type User, type InsertUser, type Article, type InsertArticle, type Comment, type InsertComment, type InsertChatMessage, type ChatMessage, type UserStats } from "@shared/schema";
+import { initializeApp, applicationDefault } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+
+initializeApp({
+  credential: applicationDefault(),
+  projectId: process.env.FIREBASE_PROJECT_ID,
+});
+
+const db = getFirestore();
 
 export interface IStorage {
   // User operations
@@ -379,3 +388,165 @@ export class MemStorage implements IStorage {
 }
 
 export const storage = new MemStorage();
+
+export class FirestoreStorage implements IStorage {
+  private usersRef = db.collection("users");
+  private articlesRef = db.collection("articles");
+  private commentsRef = db.collection("comments");
+  private likesRef = db.collection("likes");
+  private chatMessagesRef = db.collection("chat_messages");
+  private userStatsRef = db.collection("user_stats");
+
+  // Helper para converter doc para objeto com id numérico e datas
+  private docToObj<T>(doc: any): T {
+    const data = doc.data();
+    // Converte id para number se possível
+    let id: number | string = doc.id;
+    if (!isNaN(Number(id))) id = Number(id);
+    // Converte datas string/timestamp para Date
+    const convertDates = (obj: any) => {
+      for (const key in obj) {
+        if (obj[key] && (obj[key]._seconds || obj[key] instanceof Date)) {
+          obj[key] = obj[key] instanceof Date ? obj[key] : new Date(obj[key]._seconds * 1000);
+        }
+      }
+      return obj;
+    };
+    return convertDates({ ...data, id }) as T;
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const snapshot = await this.usersRef.doc(String(id)).get();
+    return snapshot.exists ? this.docToObj<User>(snapshot) : undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const snapshot = await this.usersRef.where("email", "==", email).get();
+    if (snapshot.empty) return undefined;
+    return this.docToObj<User>(snapshot.docs[0]);
+  }
+
+  async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
+    const snapshot = await this.usersRef.where("firebaseUid", "==", firebaseUid).get();
+    if (snapshot.empty) return undefined;
+    return this.docToObj<User>(snapshot.docs[0]);
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const docRef = await this.usersRef.add({ ...user, createdAt: new Date(), updatedAt: new Date() });
+    const doc = await docRef.get();
+    return this.docToObj<User>(doc);
+  }
+
+  async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
+    const ref = this.usersRef.doc(String(id));
+    await ref.update({ ...updates, updatedAt: new Date() });
+    const doc = await ref.get();
+    return this.docToObj<User>(doc);
+  }
+
+  async updateUserStripeInfo(id: number, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User> {
+    return this.updateUser(id, { stripeCustomerId, stripeSubscriptionId, isPremium: !!stripeSubscriptionId });
+  }
+
+  // Article operations
+  async getArticles(limit = 10, offset = 0, category?: string, isPremium?: boolean): Promise<Article[]> {
+    let query: any = this.articlesRef;
+    if (category) query = query.where("category", "==", category);
+    if (isPremium !== undefined) query = query.where("isPremium", "==", isPremium);
+    const snapshot = await query.orderBy("publishedAt", "desc").offset(offset).limit(limit).get();
+    return snapshot.docs.map((doc: any) => this.docToObj<Article>(doc));
+  }
+
+  async getArticle(id: number): Promise<Article | undefined> {
+    const doc = await this.articlesRef.doc(String(id)).get();
+    return doc.exists ? this.docToObj<Article>(doc) : undefined;
+  }
+
+  async getArticleBySlug(slug: string): Promise<Article | undefined> {
+    const snapshot = await this.articlesRef.where("slug", "==", slug).get();
+    if (snapshot.empty) return undefined;
+    return this.docToObj<Article>(snapshot.docs[0]);
+  }
+
+  async createArticle(article: InsertArticle): Promise<Article> {
+    const docRef = await this.articlesRef.add({ ...article, createdAt: new Date(), updatedAt: new Date(), publishedAt: new Date(), viewCount: 0, likeCount: 0 });
+    const doc = await docRef.get();
+    return this.docToObj<Article>(doc);
+  }
+
+  async updateArticleStats(id: number, viewCount?: number, likeCount?: number): Promise<void> {
+    const ref = this.articlesRef.doc(String(id));
+    const updates: any = { updatedAt: new Date() };
+    if (viewCount !== undefined) updates.viewCount = viewCount;
+    if (likeCount !== undefined) updates.likeCount = likeCount;
+    await ref.update(updates);
+  }
+
+  // Comment operations
+  async getCommentsByArticle(articleId: number): Promise<Comment[]> {
+    const snapshot = await this.commentsRef.where("articleId", "==", articleId).orderBy("createdAt").get();
+    return snapshot.docs.map(doc => this.docToObj<Comment>(doc));
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const docRef = await this.commentsRef.add({ ...comment, createdAt: new Date() });
+    const doc = await docRef.get();
+    return this.docToObj<Comment>(doc);
+  }
+
+  // Like operations
+  async getLike(userId: number, articleId: number): Promise<boolean> {
+    const snapshot = await this.likesRef.where("userId", "==", userId).where("articleId", "==", articleId).get();
+    return !snapshot.empty;
+  }
+
+  async createLike(userId: number, articleId: number): Promise<void> {
+    await this.likesRef.add({ userId, articleId, createdAt: new Date() });
+  }
+
+  async deleteLike(userId: number, articleId: number): Promise<void> {
+    const snapshot = await this.likesRef.where("userId", "==", userId).where("articleId", "==", articleId).get();
+    for (const doc of snapshot.docs) {
+      await doc.ref.delete();
+    }
+  }
+
+  // Chat operations
+  async getChatMessages(roomId: string, limit = 50): Promise<ChatMessage[]> {
+    const snapshot = await this.chatMessagesRef.where("roomId", "==", roomId).where("isReported", "==", false).orderBy("createdAt", "desc").limit(limit).get();
+    return snapshot.docs.map(doc => this.docToObj<ChatMessage>(doc)).reverse();
+  }
+
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const docRef = await this.chatMessagesRef.add({ ...message, createdAt: new Date(), isReported: false });
+    const doc = await docRef.get();
+    return this.docToObj<ChatMessage>(doc);
+  }
+
+  async reportChatMessage(id: number): Promise<void> {
+    const ref = this.chatMessagesRef.doc(String(id));
+    await ref.update({ isReported: true });
+  }
+
+  // User stats operations
+  async getUserStats(userId: number): Promise<UserStats | undefined> {
+    const snapshot = await this.userStatsRef.where("userId", "==", userId).get();
+    if (snapshot.empty) return undefined;
+    return this.docToObj<UserStats>(snapshot.docs[0]);
+  }
+
+  async updateUserStats(userId: number, stats: Partial<UserStats>): Promise<void> {
+    const snapshot = await this.userStatsRef.where("userId", "==", userId).get();
+    if (snapshot.empty) return;
+    await snapshot.docs[0].ref.update(stats);
+  }
+
+  async getUserByStripeSubscriptionId(stripeSubscriptionId: string | undefined): Promise<User | undefined> {
+    if (!stripeSubscriptionId) return undefined;
+    const snapshot = await this.usersRef.where("stripeSubscriptionId", "==", stripeSubscriptionId).get();
+    if (snapshot.empty) return undefined;
+    return this.docToObj<User>(snapshot.docs[0]);
+  }
+}

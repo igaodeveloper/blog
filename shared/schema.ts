@@ -1,3 +1,5 @@
+// Estes schemas servem agora apenas como referência para a estrutura de dados no Firestore.
+// O armazenamento principal é feito no Firestore, não mais via Drizzle/PostgreSQL.
 import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
