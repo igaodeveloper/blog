@@ -98,7 +98,7 @@ export default function Home() {
       </section>
 
       {/* Articles Section */}
-      <section id="articles" className="py-16 px-4 max-w-7xl mx-auto">
+      <section id="articles" className="py-8 px-2 sm:px-4">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -132,17 +132,9 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              {filteredArticles.map((article, index) => (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  author={{
-                    displayName: "Autor",
-                    avatar: `https://images.unsplash.com/photo-${1507003211169 + index}?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100`
-                  }}
-                  index={index}
-                />
+            <div className="grid-articles">
+              {articlesPages?.pages.flat().map((article, idx) => (
+                <ArticleCard key={article.id} article={article} index={idx} />
               ))}
             </div>
 

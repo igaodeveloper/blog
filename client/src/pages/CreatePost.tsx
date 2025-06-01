@@ -45,14 +45,16 @@ export default function CreatePost() {
   }
 
   return (
-    <div className="max-w-xl mx-auto py-12">
-      <h1 className="text-3xl font-bold mb-6">Nova Postagem</h1>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <Textarea name="content" value={form.content} onChange={handleChange} placeholder="O que você quer compartilhar?" rows={4} required disabled={loading} />
-        <Input name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="URL da imagem (opcional)" disabled={loading} />
-        <Input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="URL do vídeo (opcional)" disabled={loading} />
-        <Button type="submit" className="bg-purple-500 hover:bg-purple-600" disabled={loading}>{loading ? "Publicando..." : "Publicar"}</Button>
-      </form>
-    </div>
+    <main role="main">
+      <div className="max-w-xl mx-auto py-12">
+        <h1 className="text-3xl font-bold mb-6">Nova Postagem</h1>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <Textarea name="content" value={form.content} onChange={handleChange} placeholder="O que você quer compartilhar?" rows={4} required disabled={loading} />
+          <Input name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="URL da imagem (opcional)" disabled={loading} />
+          <Input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="URL do vídeo (opcional)" disabled={loading} />
+          <Button type="submit" className="bg-purple-500 hover:bg-purple-600" disabled={loading}>{loading ? "Publicando..." : "Publicar"}</Button>
+        </form>
+      </div>
+    </main>
   );
 } 

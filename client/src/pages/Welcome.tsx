@@ -37,10 +37,10 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center relative overflow-hidden">
+    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center relative overflow-hidden px-2 sm:px-4" role="main">
       <ParticleBackground />
       
-      <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
+      <section className="relative z-10 text-center px-4 max-w-4xl mx-auto" aria-label="Boas-vindas">
         <AnimatePresence mode="wait">
           {!animationComplete ? (
             <motion.div
@@ -147,7 +147,7 @@ export default function Welcome() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

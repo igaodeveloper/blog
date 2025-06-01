@@ -40,7 +40,11 @@ export default function ArticleCard({ article, author, index = 0 }: ArticleCardP
           <div className="relative">
             <img
               src={article.imageUrl || "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300"}
+              srcSet={article.imageUrl ? `${article.imageUrl}.webp 1x, ${article.imageUrl} 2x` : undefined}
               alt={article.title}
+              loading="lazy"
+              role="img"
+              aria-label={article.title}
               className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
             />
             {article.isPremium && (

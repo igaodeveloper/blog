@@ -28,6 +28,10 @@
   --chart-3: 252 85% 60%;
   --chart-4: 242 87% 62%;
   --chart-5: 232 89% 64%;
+  --fluid-h1: clamp(2.5rem, 5vw + 1rem, 4rem);
+  --fluid-h2: clamp(2rem, 4vw + 0.5rem, 3rem);
+  --fluid-h3: clamp(1.5rem, 3vw + 0.5rem, 2.25rem);
+  --fluid-body: clamp(1rem, 2vw + 0.5rem, 1.25rem);
 }
 
 @layer base {
@@ -257,4 +261,24 @@
                   #000000;
     }
   }
+}
+
+h1, .h1, .prose h1 {
+  font-size: var(--fluid-h1);
+}
+h2, .h2, .prose h2 {
+  font-size: var(--fluid-h2);
+}
+h3, .h3, .prose h3 {
+  font-size: var(--fluid-h3);
+}
+p, .body, .prose p {
+  font-size: var(--fluid-body);
+}
+
+/* Exemplo de Grid para lista de artigos */
+.grid-articles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
 }

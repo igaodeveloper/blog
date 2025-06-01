@@ -49,16 +49,18 @@ export default function CreateArticle() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-12">
-      <h1 className="text-3xl font-bold mb-6">Publicar Artigo</h1>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <Input name="title" value={form.title} onChange={handleChange} placeholder="Título" required disabled={loading} />
-        <Textarea name="content" value={form.content} onChange={handleChange} placeholder="Conteúdo" rows={10} required disabled={loading} />
-        <Input name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="URL da imagem (opcional)" disabled={loading} />
-        <Input name="tags" value={form.tags} onChange={handleChange} placeholder="Tags (separadas por vírgula)" disabled={loading} />
-        <Input name="category" value={form.category} onChange={handleChange} placeholder="Categoria" disabled={loading} />
-        <Button type="submit" className="bg-purple-500 hover:bg-purple-600" disabled={loading}>{loading ? "Publicando..." : "Publicar"}</Button>
-      </form>
-    </div>
+    <main role="main">
+      <div className="max-w-2xl mx-auto py-12">
+        <h1 className="text-3xl font-bold mb-6">Publicar Artigo</h1>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <Input name="title" value={form.title} onChange={handleChange} placeholder="Título" required disabled={loading} />
+          <Textarea name="content" value={form.content} onChange={handleChange} placeholder="Conteúdo" rows={10} required disabled={loading} />
+          <Input name="imageUrl" value={form.imageUrl} onChange={handleChange} placeholder="URL da imagem (opcional)" disabled={loading} />
+          <Input name="tags" value={form.tags} onChange={handleChange} placeholder="Tags (separadas por vírgula)" disabled={loading} />
+          <Input name="category" value={form.category} onChange={handleChange} placeholder="Categoria" disabled={loading} />
+          <Button type="submit" className="bg-purple-500 hover:bg-purple-600" disabled={loading}>{loading ? "Publicando..." : "Publicar"}</Button>
+        </form>
+      </div>
+    </main>
   );
 } 

@@ -349,31 +349,33 @@ export default function Subscribe() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
-      <div className="pt-16 px-4 py-12 max-w-2xl mx-auto">
-        {/* Stripe Prices */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Planos Premium</h2>
-          {loadingPrices && <div>Carregando preços...</div>}
-          {errorPrices && <div className="text-red-400">Erro ao carregar preços: {errorPrices}</div>}
-          <div className="grid gap-4">
-            {stripePrices.map((price) => (
-              <div key={price.id} className="bg-gray-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-lg font-semibold text-white">{price.product?.name || 'Produto'}</div>
-                  <div className="text-gray-400 text-sm mb-1">{price.product?.description}</div>
+      <main role="main" className="px-2 sm:px-4">
+        <div className="pt-16 px-4 py-12 max-w-2xl mx-auto">
+          {/* Stripe Prices */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4">Planos Premium</h2>
+            {loadingPrices && <div>Carregando preços...</div>}
+            {errorPrices && <div className="text-red-400">Erro ao carregar preços: {errorPrices}</div>}
+            <div className="grid gap-4">
+              {stripePrices.map((price) => (
+                <div key={price.id} className="bg-gray-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-lg font-semibold text-white">{price.product?.name || 'Produto'}</div>
+                    <div className="text-gray-400 text-sm mb-1">{price.product?.description}</div>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-400 mt-2 md:mt-0">
+                    {price.unit_amount ? (price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: price.currency.toUpperCase() }) : '—'}
+                    {price.recurring ? <span className="text-base font-normal text-gray-400 ml-1">/ {price.recurring.interval === 'month' ? 'mês' : price.recurring.interval}</span> : null}
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-purple-400 mt-2 md:mt-0">
-                  {price.unit_amount ? (price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: price.currency.toUpperCase() }) : '—'}
-                  {price.recurring ? <span className="text-base font-normal text-gray-400 ml-1">/ {price.recurring.interval === 'month' ? 'mês' : price.recurring.interval}</span> : null}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+          <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <SubscribeForm />
+          </Elements>
         </div>
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <SubscribeForm />
-        </Elements>
-      </div>
+      </main>
       <Footer />
     </div>
   );

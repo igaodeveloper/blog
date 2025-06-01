@@ -12,6 +12,8 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className
         )}
         ref={ref}
+        role="textbox"
+        aria-label={props['aria-label'] || props.placeholder || 'Campo de texto'}
         {...props}
       />
     )

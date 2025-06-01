@@ -176,7 +176,7 @@ export default function Article() {
     <div className="min-h-screen bg-black text-white">
       <Navbar />
 
-      <article className="pt-16 px-4 max-w-4xl mx-auto py-12">
+      <article className="pt-16 px-2 sm:px-4 max-w-4xl mx-auto py-12">
         {/* Back Button */}
         <Link href="/">
           <Button variant="ghost" className="mb-6 text-gray-400 hover:text-white">
@@ -267,7 +267,11 @@ export default function Article() {
           >
             <img
               src={article.imageUrl}
+              srcSet={article.imageUrl ? `${article.imageUrl}.webp 1x, ${article.imageUrl} 2x` : undefined}
               alt={article.title}
+              loading="lazy"
+              role="img"
+              aria-label={article.title}
               className="w-full h-64 md:h-96 object-cover rounded-xl"
             />
           </motion.div>
@@ -312,101 +316,17 @@ export default function Article() {
           </motion.div>
         )}
 
-        {/* Comments Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="border-t border-gray-700 pt-12"
-        >
-          <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
-            <MessageCircle className="w-6 h-6" />
-            Comentários ({comments.length})
-          </h2>
+        {/* Busca customizada (Algolia) - Placeholder */}
+        <section aria-label="Busca de artigos" className="my-8">
+          {/* Integrar Algolia aqui */}
+          <input type="search" placeholder="Buscar artigos..." className="w-full p-2 rounded bg-gray-800 text-white" aria-label="Buscar artigos" />
+        </section>
 
-          {/* Comment Form */}
-          {user ? (
-            <form onSubmit={handleComment} className="mb-8">
-              <div className="flex gap-4">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={user.avatar || ""} alt={user.displayName} />
-                  <AvatarFallback>
-                    {user.displayName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <Textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Adicione um comentário..."
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 resize-none"
-                    rows={3}
-                  />
-                  <div className="flex justify-end mt-2">
-                    <Button
-                      type="submit"
-                      disabled={!comment.trim() || commentMutation.isPending}
-                      className="bg-purple-500 hover:bg-purple-600"
-                    >
-                      {commentMutation.isPending ? "Enviando..." : "Comentar"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </form>
-          ) : (
-            <div className="mb-8 p-4 bg-gray-800 rounded-lg text-center">
-              <p className="text-gray-400 mb-4">
-                Faça login para participar da discussão
-              </p>
-              <Link href="/login">
-                <Button className="bg-purple-500 hover:bg-purple-600">
-                  Fazer Login
-                </Button>
-              </Link>
-            </div>
-          )}
-
-          {/* Comments List */}
-          <div className="space-y-6">
-            {comments.map((comment, index) => (
-              <motion.div
-                key={comment.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="flex gap-4 p-4 bg-gray-800 rounded-lg"
-              >
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={comment.user?.avatar || ""} alt={comment.user?.displayName || "Usuário"} />
-                  <AvatarFallback>
-                    {comment.user?.displayName?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold text-white">
-                      {comment.user?.displayName || "Usuário"}
-                    </span>
-                    <span className="text-sm text-gray-400">
-                      {comment.createdAt ? format(new Date(comment.createdAt), "dd/MM/yyyy 'às' HH:mm") : ""}
-                    </span>
-                  </div>
-                  <p className="text-gray-300">{comment.content}</p>
-                </div>
-              </motion.div>
-            ))}
-
-            {comments.length === 0 && !isLoadingComments && (
-              <div className="text-center py-8">
-                <MessageCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">
-                  Seja o primeiro a comentar neste artigo!
-                </p>
-              </div>
-            )}
-          </div>
-        </motion.section>
+        {/* Comentários (Disqus/API custom) - Placeholder */}
+        <section aria-label="Comentários" className="my-8">
+          {/* Integrar Disqus ou API custom aqui */}
+          <div className="bg-gray-900 p-4 rounded-lg text-gray-400">Comentários em breve...</div>
+        </section>
       </article>
 
       <Footer />

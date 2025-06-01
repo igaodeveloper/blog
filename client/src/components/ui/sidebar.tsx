@@ -150,6 +150,8 @@ const SidebarProvider = React.forwardRef<
             )}
             ref={ref}
             {...props}
+            role="complementary"
+            aria-label="Barra lateral de navegação"
           >
             {children}
           </div>
