@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Flag } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
 import { getChatWebSocketUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatMessage {
   id: number;
@@ -35,11 +36,122 @@ export default function ChatWindow() {
   const { user } = useAuth();
   const { t, language } = useTranslation();
   const [status, setStatus] = useState(user?.status || "online");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [usersFetched, setUsersFetched] = useState(false);
 
   const { data: initialMessages, isLoading } = useQuery({
     queryKey: ["/api/chat/messages"],
     enabled: !!user,
   });
+
+  // Busca todas as conexões do usuário logado
+  const { data: myConnections = [], refetch: refetchConnections } = useQuery({
+    queryKey: ["/api/connections/" + user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/connections/${user.id}`);
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+  // Busca convites recebidos
+  const { data: myPendingRequests = [], refetch: refetchRequests } = useQuery({
+    queryKey: ["/api/connections/requests/" + user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/connections/requests/${user.id}`);
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  // Mutations para amizade
+  const sendRequest = useMutation({
+    mutationFn: async (targetUserId: number) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/connections/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ userId: user.id, targetUserId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Convite enviado!" });
+      refetchConnections();
+      refetchRequests();
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+  const acceptRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/connections/accept", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Conexão aceita!" });
+      refetchConnections();
+      refetchRequests();
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+  const rejectRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/connections/reject", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Convite recusado" });
+      refetchRequests();
+      refetchConnections();
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  // Função utilitária para status de conexão
+  function getConnectionStatus(onlineUser: any) {
+    if (!user || user.id === onlineUser.id) return null;
+    // Verifica se já é amigo
+    const isConnected = myConnections.some((c: any) =>
+      (c.userId === user.id && c.targetUserId === onlineUser.id || c.userId === onlineUser.id && c.targetUserId === user.id) && c.status === "accepted"
+    );
+    if (isConnected) return { status: "connected" };
+    // Verifica se convite foi enviado por mim
+    const sent = myConnections.find((c: any) => c.userId === user.id && c.targetUserId === onlineUser.id && c.status === "pending");
+    if (sent) return { status: "sent" };
+    // Verifica se convite foi recebido por mim
+    const received = myPendingRequests.find((c: any) => c.userId === onlineUser.id && c.targetUserId === user.id && c.status === "pending");
+    if (received) return { status: "received", id: received.id };
+    // Não há relação
+    return { status: "none" };
+  }
 
   useEffect(() => {
     if (Array.isArray(initialMessages)) {
@@ -121,6 +233,33 @@ export default function ChatWindow() {
       });
     }
   };
+
+  // Buscar todos os usuários apenas uma vez ao focar no campo de busca
+  const fetchAllUsers = async () => {
+    if (usersFetched || isLoadingUsers) return;
+    setIsLoadingUsers(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/users", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      setAllUsers(data.users || []);
+      setUsersFetched(true);
+    } catch (e) {
+      toast({ title: "Erro ao buscar usuários", description: String(e), variant: "destructive" });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  // Filtrar usuários por email ou username
+  const filteredUsers = searchQuery.trim().length > 0
+    ? allUsers.filter((u) =>
+        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (u.username && u.username.toLowerCase().includes(searchQuery.toLowerCase()))
+      ).filter((u) => u.email !== user?.email) // não mostrar o próprio usuário
+    : [];
 
   if (!user) {
     return (
@@ -228,48 +367,97 @@ export default function ChatWindow() {
               </SelectContent>
             </Select>
           </h3>
+          {/* Busca de usuários */}
+          <div className="mb-4">
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onFocus={fetchAllUsers}
+              placeholder="Buscar por email ou username..."
+              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none mb-2"
+              maxLength={100}
+            />
+            {searchQuery.trim().length > 0 && (
+              <div className="max-h-56 overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg p-2 mt-1">
+                {isLoadingUsers ? (
+                  <div className="text-gray-400 text-sm p-2">Carregando usuários...</div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="text-gray-400 text-sm p-2">Nenhum usuário encontrado.</div>
+                ) : (
+                  filteredUsers.map((u) => {
+                    const conn = getConnectionStatus(u);
+                    return (
+                      <div key={u.email} className="flex items-center gap-2 py-1 border-b border-gray-800 last:border-b-0">
+                        <span className="text-xs text-white font-mono">{u.username}</span>
+                        <span className="text-xs text-gray-400">{u.email}</span>
+                        {/* Botão de amizade */}
+                        {conn && conn.status === "connected" && (
+                          <Button disabled size="sm" className="bg-green-600 ml-2">Conectado</Button>
+                        )}
+                        {conn && conn.status === "sent" && (
+                          <Button disabled size="sm" variant="outline" className="border-gray-600 text-gray-400 ml-2">Convite enviado</Button>
+                        )}
+                        {conn && conn.status === "received" && (
+                          <div className="flex gap-1 ml-2">
+                            <Button size="sm" className="bg-purple-500 hover:bg-purple-600" onClick={() => acceptRequest.mutate(conn.id)}>Aceitar</Button>
+                            <Button size="sm" variant="outline" className="border-gray-600 text-gray-400" onClick={() => rejectRequest.mutate(conn.id)}>Recusar</Button>
+                          </div>
+                        )}
+                        {conn && conn.status === "none" && (
+                          <Button size="sm" className="bg-purple-500 hover:bg-purple-600 ml-2" onClick={() => sendRequest.mutate(u.id)}>Adicionar amigo</Button>
+                        )}
+                        {!conn && null}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
           <div className="space-y-3">
             {onlineUsers.length > 0 ? (
-              onlineUsers.map((user) => (
-                <div key={user.id} className="flex items-center gap-3">
+              onlineUsers.map((onlineUser) => (
+                <div key={onlineUser.id} className="flex items-center gap-3">
                   <div className="relative">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={user.avatar} alt={user.displayName} />
+                      <AvatarImage src={onlineUser.avatar} alt={onlineUser.displayName} />
                       <AvatarFallback>
-                        {user.displayName.charAt(0).toUpperCase()}
+                        {onlineUser.displayName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${
-                      user.status === "online" ? "bg-green-500" : user.status === "busy" ? "bg-red-500" : user.status === "away" ? "bg-yellow-400" : "bg-gray-500"
+                      onlineUser.status === "online" ? "bg-green-500" : onlineUser.status === "busy" ? "bg-red-500" : onlineUser.status === "away" ? "bg-yellow-400" : "bg-gray-500"
                     }`}></div>
                   </div>
-                  <span className="text-sm text-white">{user.displayName}</span>
-                  <span className="text-xs text-gray-400 capitalize">{user.status}</span>
+                  <span className="text-sm text-white">{onlineUser.displayName}</span>
+                  <span className="text-xs text-gray-400 capitalize">{onlineUser.status}</span>
+                  {/* Botão de amizade */}
+                  {(() => {
+                    const conn = getConnectionStatus(onlineUser);
+                    if (!conn) return null;
+                    if (conn.status === "connected") {
+                      return <Button disabled size="sm" className="bg-green-600 ml-2">Conectado</Button>;
+                    }
+                    if (conn.status === "sent") {
+                      return <Button disabled size="sm" variant="outline" className="border-gray-600 text-gray-400 ml-2">Convite enviado</Button>;
+                    }
+                    if (conn.status === "received") {
+                      return (
+                        <div className="flex gap-1 ml-2">
+                          <Button size="sm" className="bg-purple-500 hover:bg-purple-600" onClick={() => acceptRequest.mutate(conn.id)}>Aceitar</Button>
+                          <Button size="sm" variant="outline" className="border-gray-600 text-gray-400" onClick={() => rejectRequest.mutate(conn.id)}>Recusar</Button>
+                        </div>
+                      );
+                    }
+                    if (conn.status === "none") {
+                      return <Button size="sm" className="bg-purple-500 hover:bg-purple-600 ml-2" onClick={() => sendRequest.mutate(onlineUser.id)}>Adicionar amigo</Button>;
+                    }
+                    return null;
+                  })()}
                 </div>
               ))
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=32&h=32" />
-                      <AvatarFallback>JS</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
-                  </div>
-                  <span className="text-sm text-white">João Silva</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b977?ixlib=rb-4.0.3&auto=format&fit=crop&w=32&h=32" />
-                      <AvatarFallback>MS</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
-                  </div>
-                  <span className="text-sm text-white">Maria Santos</span>
-                </div>
-              </div>
+              <div className="text-gray-400 text-sm p-2">Nenhum usuário online.</div>
             )}
           </div>
         </div>

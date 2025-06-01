@@ -19,14 +19,36 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
+  // Novo tratamento de erro: tenta extrair mensagem JSON, depois texto, depois HTML
+  if (!res.ok) {
+    const contentType = res.headers.get("content-type") || "";
+    let errorMsg = `${res.status}: Erro desconhecido`;
+    try {
+      if (contentType.includes("application/json")) {
+        const json = await res.json();
+        errorMsg = json.message || JSON.stringify(json);
+      } else if (contentType.includes("text/plain")) {
+        errorMsg = await res.text();
+      } else if (contentType.includes("text/html")) {
+        const text = await res.text();
+        if (text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html")) {
+          errorMsg = "Resposta inesperada do servidor (HTML). Verifique se o backend está rodando e se o endpoint existe.";
+        } else {
+          errorMsg = text;
+        }
+      }
+    } catch (e) {
+      // fallback
+    }
+    throw new Error(errorMsg);
+  }
 
-  // Detecta resposta HTML inesperada
+  // Detecta resposta HTML inesperada (mesmo com status 200)
   const contentType = res.headers.get("content-type");
   if (contentType && contentType.includes("text/html")) {
     const text = await res.text();
     if (text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html")) {
-      throw new Error("Resposta inesperada do servidor. Verifique sua conexão ou tente novamente mais tarde.");
+      throw new Error("Resposta inesperada do servidor (HTML). Verifique se o backend está rodando e se o endpoint existe.");
     }
   }
 
