@@ -33,6 +33,9 @@ export interface IStorage {
   // User stats operations
   getUserStats(userId: number): Promise<UserStats | undefined>;
   updateUserStats(userId: number, stats: Partial<UserStats>): Promise<void>;
+
+  // New method
+  getUserByStripeSubscriptionId(stripeSubscriptionId: string | undefined): Promise<User | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -71,12 +74,12 @@ export class MemStorage implements IStorage {
       username: "joaosilva",
       password: "hashed_password",
       displayName: "João Silva",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100",
-      bio: "Full Stack Developer apaixonado por React e Node.js",
-      website: "https://joaosilva.dev",
-      github: "joao-silva",
-      linkedin: "joao-silva",
-      isPremium: false,
+      avatar: null,
+      bio: null,
+      website: null,
+      github: null,
+      linkedin: null,
+      isPremium: false as boolean | null,
       preferredLanguage: "pt",
       theme: "dark",
       stripeCustomerId: null,
@@ -92,12 +95,12 @@ export class MemStorage implements IStorage {
       username: "mariasantos",
       password: "hashed_password",
       displayName: "Maria Santos",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b977?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100",
-      bio: "Data Scientist especializada em Machine Learning",
-      website: "https://mariasantos.dev",
-      github: "maria-santos",
-      linkedin: "maria-santos",
-      isPremium: true,
+      avatar: null,
+      bio: null,
+      website: null,
+      github: null,
+      linkedin: null,
+      isPremium: true as boolean | null,
       preferredLanguage: "pt",
       theme: "dark",
       stripeCustomerId: null,
@@ -184,6 +187,18 @@ export class MemStorage implements IStorage {
     const user: User = {
       ...insertUser,
       id,
+      password: insertUser.password ?? null,
+      avatar: insertUser.avatar ?? null,
+      bio: insertUser.bio ?? null,
+      website: insertUser.website ?? null,
+      github: insertUser.github ?? null,
+      linkedin: insertUser.linkedin ?? null,
+      stripeCustomerId: insertUser.stripeCustomerId ?? null,
+      stripeSubscriptionId: insertUser.stripeSubscriptionId ?? null,
+      firebaseUid: insertUser.firebaseUid ?? null,
+      isPremium: insertUser.isPremium ?? false,
+      preferredLanguage: insertUser.preferredLanguage ?? null,
+      theme: insertUser.theme ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -258,8 +273,12 @@ export class MemStorage implements IStorage {
     const article: Article = {
       ...insertArticle,
       id,
+      imageUrl: insertArticle.imageUrl ?? null,
+      tags: insertArticle.tags ?? [],
+      isPremium: insertArticle.isPremium ?? false,
       viewCount: 0,
       likeCount: 0,
+      authorId: insertArticle.authorId ?? null,
       publishedAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -292,6 +311,9 @@ export class MemStorage implements IStorage {
     const comment: Comment = {
       ...insertComment,
       id,
+      articleId: insertComment.articleId ?? null,
+      userId: insertComment.userId ?? null,
+      parentId: insertComment.parentId ?? null,
       createdAt: new Date(),
     };
     this.comments.set(id, comment);
@@ -323,6 +345,8 @@ export class MemStorage implements IStorage {
     const message: ChatMessage = {
       ...insertMessage,
       id,
+      userId: insertMessage.userId ?? null,
+      roomId: insertMessage.roomId ?? null,
       isReported: false,
       createdAt: new Date(),
     };
@@ -346,6 +370,11 @@ export class MemStorage implements IStorage {
     if (currentStats) {
       this.userStats.set(userId, { ...currentStats, ...stats });
     }
+  }
+
+  async getUserByStripeSubscriptionId(stripeSubscriptionId: string | undefined): Promise<User | undefined> {
+    if (typeof stripeSubscriptionId !== 'string') return undefined;
+    return Array.from(this.users.values()).find(user => user.stripeSubscriptionId === stripeSubscriptionId);
   }
 }
 

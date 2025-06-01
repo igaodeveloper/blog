@@ -111,13 +111,6 @@ export default function LoginForm() {
               <FaGoogle className="w-4 h-4 mr-2 text-red-400" />
               {t("auth.google")}
             </Button>
-            <Button
-              variant="outline"
-              className="w-full bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
-            >
-              <FaLinkedin className="w-4 h-4 mr-2 text-blue-400" />
-              {t("auth.linkedin")}
-            </Button>
           </div>
         </div>
 

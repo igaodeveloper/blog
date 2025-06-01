@@ -4,13 +4,14 @@ import { WebSocketServer } from "ws";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { insertUserSchema, insertCommentSchema, insertChatMessageSchema } from "@shared/schema";
+import express from "express";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not found, payment features will be disabled');
 }
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2025-05-28.basil",
 }) : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -184,7 +185,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Increment view count
-      await storage.updateArticleStats(article.id, article.viewCount + 1);
+      if (article.viewCount !== null) {
+        await storage.updateArticleStats(article.id, article.viewCount + 1);
+      }
       
       res.json(article);
     } catch (error: any) {
@@ -200,7 +203,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Increment view count
-      await storage.updateArticleStats(article.id, article.viewCount + 1);
+      if (article.viewCount !== null) {
+        await storage.updateArticleStats(article.id, article.viewCount + 1);
+      }
       
       res.json(article);
     } catch (error: any) {
@@ -261,14 +266,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.deleteLike(userId, articleId);
         const article = await storage.getArticle(articleId);
         if (article) {
-          await storage.updateArticleStats(articleId, undefined, article.likeCount - 1);
+          if (article.likeCount !== null) {
+            await storage.updateArticleStats(articleId, undefined, article.likeCount - 1);
+          }
         }
         res.json({ isLiked: false });
       } else {
         await storage.createLike(userId, articleId);
         const article = await storage.getArticle(articleId);
         if (article) {
-          await storage.updateArticleStats(articleId, undefined, article.likeCount + 1);
+          if (article.likeCount !== null) {
+            await storage.updateArticleStats(articleId, undefined, article.likeCount + 1);
+          }
         }
         res.json({ isLiked: true });
       }
@@ -325,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     app.post("/api/create-subscription", async (req, res) => {
       try {
-        const { userId, email, username } = req.body;
+        const { userId, email, username, priceId } = req.body;
         
         let user = await storage.getUser(userId);
         if (!user) {
@@ -351,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const subscription = await stripe.subscriptions.create({
           customer: customer.id,
           items: [{
-            price: process.env.STRIPE_PRICE_ID || "price_1234567890", // Default price ID
+            price: priceId || process.env.STRIPE_PRICE_ID || "price_1234567890", // Usa priceId se enviado
           }],
           payment_behavior: 'default_incomplete',
           expand: ['latest_invoice.payment_intent'],
@@ -366,6 +375,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error: any) {
         res.status(400).json({ message: error.message });
       }
+    });
+
+    app.get("/api/stripe/prices", async (req, res) => {
+      try {
+        const prices = await stripe.prices.list({ active: true, expand: ["data.product"] });
+        res.json(prices.data.map(price => ({
+          id: price.id,
+          unit_amount: price.unit_amount,
+          currency: price.currency,
+          recurring: price.recurring,
+          product: (typeof price.product === 'object' && price.product.object === 'product') ? {
+            id: price.product.id,
+            name: (price.product as Stripe.Product).name,
+            description: (price.product as Stripe.Product).description,
+            images: (price.product as Stripe.Product).images,
+          } : price.product
+        })));
+      } catch (error: any) {
+        res.status(500).json({ message: "Error fetching Stripe prices: " + error.message });
+      }
+    });
+
+    // Webhook Stripe
+    app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
+      const sig = req.headers['stripe-signature'];
+      if (!sig) {
+        return res.status(400).send('Missing Stripe signature header');
+      }
+      if (!process.env.STRIPE_WEBHOOK_SECRET || typeof process.env.STRIPE_WEBHOOK_SECRET !== 'string') {
+        return res.status(500).send('Stripe webhook secret not configured');
+      }
+      let event;
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      } catch (err) {
+        const errorMsg = (err instanceof Error) ? err.message : String(err);
+        console.error("Webhook signature verification failed.", errorMsg);
+        return res.status(400).send(`Webhook Error: ${errorMsg}`);
+      }
+
+      // Handle the event
+      switch (event.type) {
+        case 'invoice.paid': {
+          const invoice: any = event.data.object;
+          const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : undefined;
+          if (subscriptionId) {
+            const user = await storage.getUserByStripeSubscriptionId(subscriptionId);
+            if (user) {
+              await storage.updateUser(user.id, { isPremium: true });
+            }
+          }
+          break;
+        }
+        case 'customer.subscription.updated': {
+          const subscription = event.data.object;
+          const user = await storage.getUserByStripeSubscriptionId(subscription.id);
+          if (user) {
+            const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+            await storage.updateUser(user.id, { isPremium: isActive });
+          }
+          break;
+        }
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object;
+          const user = await storage.getUserByStripeSubscriptionId(subscription.id);
+          if (user) {
+            await storage.updateUser(user.id, { isPremium: false });
+          }
+          break;
+        }
+        default:
+          // Unexpected event type
+          break;
+      }
+      res.json({ received: true });
     });
   }
 

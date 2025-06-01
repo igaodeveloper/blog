@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Check, Star, ArrowLeft, CreditCard, Shield, Zap } from 'lucide-react';
+import { plans } from "@/components/Premium/PricingCards";
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
@@ -163,20 +164,47 @@ const SubscribeForm = () => {
   );
 };
 
+function useStripePrices() {
+  const [prices, setPrices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/stripe/prices')
+      .then(res => res.json())
+      .then(setPrices)
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { prices, loading, error };
+}
+
 export default function Subscribe() {
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  // Buscar preços Stripe
+  const { prices: stripePrices, loading: loadingPrices, error: errorPrices } = useStripePrices();
+
+  // Obter plano da query string
+  const searchParams = new URLSearchParams(location.split('?')[1] || '');
+  const plan = searchParams.get('plan') || 'premium';
+
+  // Encontrar priceId do plano
+  const planObj = plans.find((p: { id: string }) => p.id === plan);
+  const priceId = planObj?.priceId || (stripePrices.find((p: any) => p.product?.name?.toLowerCase().includes(plan))?.id);
 
   useEffect(() => {
     if (!user) {
       setLocation('/login');
       return;
     }
-
+    if (!priceId) return;
     // Create subscription as soon as the page loads
     const createSubscription = async () => {
       try {
@@ -185,8 +213,8 @@ export default function Subscribe() {
           userId: user.id,
           email: user.email,
           username: user.displayName,
+          priceId,
         });
-        
         const data = await response.json();
         setClientSecret(data.clientSecret);
       } catch (error: any) {
@@ -196,9 +224,8 @@ export default function Subscribe() {
         setLoading(false);
       }
     };
-
     createSubscription();
-  }, [user, setLocation]);
+  }, [user, setLocation, priceId]);
 
   if (!user) {
     return null;
@@ -296,86 +323,35 @@ export default function Subscribe() {
     );
   }
 
-  // Make SURE to wrap the form in <Elements> which provides the stripe context.
+  // Exibir preços Stripe e formulário
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
-      
-      <div className="pt-16 px-4 py-12">
-        {/* Back Button */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation('/premium')}
-            className="text-gray-400 hover:text-white"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Premium
-          </Button>
-        </div>
-
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Upgrade para <span className="text-purple-400">Premium</span>
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-            Desbloqueie todo o potencial do CodeLoom com acesso completo aos nossos recursos premium
-          </p>
-        </motion.div>
-
-        {/* Payment Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="max-w-lg mx-auto"
-        >
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <SubscribeForm />
-          </Elements>
-        </motion.div>
-
-        {/* Trust Indicators */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-16 max-w-4xl mx-auto"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Shield className="w-8 h-8 text-green-400" />,
-                title: "Pagamento Seguro",
-                description: "Seus dados são protegidos com criptografia de ponta"
-              },
-              {
-                icon: <Zap className="w-8 h-8 text-purple-400" />,
-                title: "Ativação Instantânea",
-                description: "Acesso imediato após confirmação do pagamento"
-              },
-              {
-                icon: <Star className="w-8 h-8 text-yellow-400" />,
-                title: "Suporte Premium",
-                description: "Atendimento prioritário e especializado"
-              }
-            ].map((item, index) => (
-              <div key={index} className="text-center p-6 bg-gray-900/50 rounded-xl border border-gray-700">
-                <div className="flex justify-center mb-4">{item.icon}</div>
-                <h3 className="text-lg font-semibold mb-2 text-white">{item.title}</h3>
-                <p className="text-gray-400 text-sm">{item.description}</p>
+      <div className="pt-16 px-4 py-12 max-w-2xl mx-auto">
+        {/* Stripe Prices */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">Planos Premium</h2>
+          {loadingPrices && <div>Carregando preços...</div>}
+          {errorPrices && <div className="text-red-400">Erro ao carregar preços: {errorPrices}</div>}
+          <div className="grid gap-4">
+            {stripePrices.map((price) => (
+              <div key={price.id} className="bg-gray-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-lg font-semibold text-white">{price.product?.name || 'Produto'}</div>
+                  <div className="text-gray-400 text-sm mb-1">{price.product?.description}</div>
+                </div>
+                <div className="text-2xl font-bold text-purple-400 mt-2 md:mt-0">
+                  {price.unit_amount ? (price.unit_amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: price.currency.toUpperCase() }) : '—'}
+                  {price.recurring ? <span className="text-base font-normal text-gray-400 ml-1">/ {price.recurring.interval === 'month' ? 'mês' : price.recurring.interval}</span> : null}
+                </div>
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <SubscribeForm />
+        </Elements>
       </div>
-
       <Footer />
     </div>
   );

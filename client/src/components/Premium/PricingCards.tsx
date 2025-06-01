@@ -8,11 +8,12 @@ import { Check, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
-const plans = [
+export const plans = [
   {
     id: "free",
     name: "Gratuito",
     price: 0,
+    priceId: null,
     popular: false,
     features: [
       "Acesso a artigos básicos",
@@ -25,6 +26,7 @@ const plans = [
     id: "premium",
     name: "Premium",
     price: 29,
+    priceId: "price_1RUwoSRQSW7DwapyCoFhcsQP",
     popular: true,
     features: [
       "Todos os recursos gratuitos",
@@ -39,6 +41,7 @@ const plans = [
     id: "pro",
     name: "Profissional",
     price: 79,
+    priceId: "price_1RUwn4RQSW7Dwapy0T8CSPf0",
     popular: false,
     features: [
       "Todos os recursos Premium",
@@ -135,24 +138,19 @@ export default function PricingCards() {
                 >
                   {t("premium.currentPlan")}
                 </Button>
-              ) : plan.id === "premium" ? (
-                <Link href="/subscribe">
+              ) : (
+                <Link href={`/subscribe?plan=${plan.id}`}>
                   <Button 
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold shadow-lg shadow-purple-500/25"
+                    className={
+                      plan.id === "premium"
+                        ? "w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold shadow-lg shadow-purple-500/25"
+                        : "w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold shadow-lg shadow-yellow-500/25"
+                    }
                     disabled={loading === plan.id}
                   >
                     {loading === plan.id ? "Carregando..." : t("premium.upgrade")}
                   </Button>
                 </Link>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="w-full bg-transparent border-gray-600 text-white hover:border-purple-500 hover:bg-purple-500/10"
-                  onClick={() => handleSelectPlan(plan.id)}
-                  disabled={loading === plan.id}
-                >
-                  {loading === plan.id ? "Carregando..." : t("premium.choose")}
-                </Button>
               )}
             </CardContent>
           </Card>

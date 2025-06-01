@@ -22,16 +22,16 @@ export default function SearchFilters({ onSearch, onCategoryFilter, onSortChange
   };
 
   const categories = [
-    "Todas Categorias",
-    "JavaScript",
-    "Python",
-    "React",
-    "DevOps",
-    "Machine Learning",
-    "Frontend",
-    "Backend",
-    "Mobile",
-    "Design",
+    { label: "Todas Categorias", value: "all" },
+    { label: "JavaScript", value: "JavaScript" },
+    { label: "Python", value: "Python" },
+    { label: "React", value: "React" },
+    { label: "DevOps", value: "DevOps" },
+    { label: "Machine Learning", value: "Machine Learning" },
+    { label: "Frontend", value: "Frontend" },
+    { label: "Backend", value: "Backend" },
+    { label: "Mobile", value: "Mobile" },
+    { label: "Design", value: "Design" },
   ];
 
   return (
@@ -48,18 +48,18 @@ export default function SearchFilters({ onSearch, onCategoryFilter, onSortChange
       </div>
       
       <div className="flex gap-2">
-        <Select onValueChange={onCategoryFilter}>
+        <Select onValueChange={value => onCategoryFilter(value === "all" ? "" : value)}>
           <SelectTrigger className="w-48 bg-gray-900 border-gray-700 text-white focus:border-purple-500">
             <SelectValue placeholder={t("home.allCategories")} />
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-700">
             {categories.map((category) => (
               <SelectItem 
-                key={category} 
-                value={category === "Todas Categorias" ? "" : category}
+                key={category.value} 
+                value={category.value}
                 className="text-white focus:bg-gray-800"
               >
-                {category}
+                {category.label}
               </SelectItem>
             ))}
           </SelectContent>
