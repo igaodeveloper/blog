@@ -45,6 +45,14 @@ export interface IStorage {
 
   // New method
   getUserByStripeSubscriptionId(stripeSubscriptionId: string | undefined): Promise<User | undefined>;
+
+  // New method for videos and posts
+  createVideo(insertVideo: any): Promise<Article>;
+  getVideos(): Promise<Article[]>;
+  getVideo(id: number): Promise<Article | undefined>;
+  createPost(insertPost: any): Promise<Article>;
+  getPosts(): Promise<Article[]>;
+  getPost(id: number): Promise<Article | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -58,6 +66,8 @@ export class MemStorage implements IStorage {
   private currentArticleId: number;
   private currentCommentId: number;
   private currentChatMessageId: number;
+  private videos: Map<number, Article> | undefined;
+  private posts: Map<number, Article> | undefined;
 
   constructor() {
     this.users = new Map();
@@ -389,6 +399,50 @@ export class MemStorage implements IStorage {
   public getAllUsers(): User[] {
     return Array.from(this.users.values());
   }
+
+  async createVideo(insertVideo: any): Promise<Article> {
+    const id = this.currentArticleId++;
+    const video = { ...insertVideo, id, createdAt: new Date(), updatedAt: new Date() };
+    this.videos = this.videos || new Map();
+    this.videos.set(id, video);
+    return video;
+  }
+
+  async getVideos(): Promise<Article[]> {
+    this.videos = this.videos || new Map();
+    return Array.from(this.videos.values()).sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  async getVideo(id: number): Promise<Article | undefined> {
+    this.videos = this.videos || new Map();
+    return this.videos.get(id);
+  }
+
+  async createPost(insertPost: any): Promise<Article> {
+    const id = this.currentArticleId++;
+    const post = { ...insertPost, id, createdAt: new Date(), updatedAt: new Date() };
+    this.posts = this.posts || new Map();
+    this.posts.set(id, post);
+    return post;
+  }
+
+  async getPosts(): Promise<Article[]> {
+    this.posts = this.posts || new Map();
+    return Array.from(this.posts.values()).sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  async getPost(id: number): Promise<Article | undefined> {
+    this.posts = this.posts || new Map();
+    return this.posts.get(id);
+  }
 }
 
 export const storage = new MemStorage();
@@ -400,6 +454,8 @@ export class FirestoreStorage implements IStorage {
   private likesRef = db.collection("likes");
   private chatMessagesRef = db.collection("chat_messages");
   private userStatsRef = db.collection("user_stats");
+  private videosRef = db.collection("videos");
+  private postsRef = db.collection("posts");
 
   // Helper para converter doc para objeto com id numérico e datas
   private docToObj<T>(doc: any): T {
@@ -552,5 +608,38 @@ export class FirestoreStorage implements IStorage {
     const snapshot = await this.usersRef.where("stripeSubscriptionId", "==", stripeSubscriptionId).get();
     if (snapshot.empty) return undefined;
     return this.docToObj<User>(snapshot.docs[0]);
+  }
+
+  // New method for videos and posts
+  async createVideo(video: any): Promise<Article> {
+    const docRef = await this.videosRef.add({ ...video, createdAt: new Date(), updatedAt: new Date() });
+    const doc = await docRef.get();
+    return this.docToObj(doc);
+  }
+
+  async getVideos(): Promise<Article[]> {
+    const snapshot = await this.videosRef.orderBy("createdAt", "desc").get();
+    return snapshot.docs.map(doc => this.docToObj(doc));
+  }
+
+  async getVideo(id: number): Promise<Article | undefined> {
+    const doc = await this.videosRef.doc(String(id)).get();
+    return doc.exists ? this.docToObj(doc) : undefined;
+  }
+
+  async createPost(post: any): Promise<Article> {
+    const docRef = await this.postsRef.add({ ...post, createdAt: new Date(), updatedAt: new Date() });
+    const doc = await docRef.get();
+    return this.docToObj(doc);
+  }
+
+  async getPosts(): Promise<Article[]> {
+    const snapshot = await this.postsRef.orderBy("createdAt", "desc").get();
+    return snapshot.docs.map(doc => this.docToObj(doc));
+  }
+
+  async getPost(id: number): Promise<Article | undefined> {
+    const doc = await this.postsRef.doc(String(id)).get();
+    return doc.exists ? this.docToObj(doc) : undefined;
   }
 }

@@ -468,5 +468,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // Video routes
+  app.post("/api/videos", async (req, res) => {
+    try {
+      const video = await storage.createVideo(req.body);
+      res.json(video);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+  app.get("/api/videos", async (req, res) => {
+    try {
+      const videos = await storage.getVideos();
+      res.json(videos);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+  app.get("/api/videos/:id", async (req, res) => {
+    try {
+      const video = await storage.getVideo(parseInt(req.params.id));
+      if (!video) return res.status(404).json({ message: "Video not found" });
+      res.json(video);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+  // Post routes
+  app.post("/api/posts", async (req, res) => {
+    try {
+      const post = await storage.createPost(req.body);
+      res.json(post);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+  app.get("/api/posts", async (req, res) => {
+    try {
+      const posts = await storage.getPosts();
+      res.json(posts);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+  app.get("/api/posts/:id", async (req, res) => {
+    try {
+      const post = await storage.getPost(parseInt(req.params.id));
+      if (!post) return res.status(404).json({ message: "Post not found" });
+      res.json(post);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   return httpServer;
 }

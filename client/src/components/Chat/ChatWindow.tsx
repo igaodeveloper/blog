@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Send, Flag } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
+import { getChatWebSocketUrl } from "@/lib/utils";
 
 interface ChatMessage {
   id: number;
@@ -39,7 +40,7 @@ export default function ChatWindow() {
   });
 
   useEffect(() => {
-    if (initialMessages) {
+    if (Array.isArray(initialMessages)) {
       setMessages(initialMessages);
     }
   }, [initialMessages]);
@@ -47,7 +48,7 @@ export default function ChatWindow() {
   useEffect(() => {
     if (!user) return;
 
-    const websocket = new WebSocket(`ws://localhost:5000?userId=${user.id}`);
+    const websocket = new WebSocket(getChatWebSocketUrl(user.id));
     
     websocket.onopen = () => {
       console.log("WebSocket connected");

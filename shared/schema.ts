@@ -79,6 +79,30 @@ export const userStats = pgTable("user_stats", {
   lastActiveAt: timestamp("last_active_at").defaultNow(),
 });
 
+export const videos = pgTable("videos", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  url: text("url").notNull(),
+  thumbnail: text("thumbnail"),
+  authorId: integer("author_id").references(() => users.id),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  videoUrl: text("video_url"),
+  authorId: integer("author_id").references(() => users.id),
+  likeCount: integer("like_count").default(0),
+  commentCount: integer("comment_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -105,6 +129,18 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   isReported: true,
 });
 
+export const insertVideoSchema = createInsertSchema(videos).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPostSchema = createInsertSchema(posts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
@@ -114,3 +150,7 @@ export type Comment = typeof comments.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type UserStats = typeof userStats.$inferSelect;
+export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type Video = typeof videos.$inferSelect;
+export type InsertPost = z.infer<typeof insertPostSchema>;
+export type Post = typeof posts.$inferSelect;
