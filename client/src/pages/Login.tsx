@@ -12,7 +12,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      setLocation("/");
+      setLocation("/welcome");
     }
   }, [user, setLocation]);
 

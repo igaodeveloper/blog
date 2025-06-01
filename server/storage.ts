@@ -385,6 +385,10 @@ export class MemStorage implements IStorage {
     if (typeof stripeSubscriptionId !== 'string') return undefined;
     return Array.from(this.users.values()).find(user => user.stripeSubscriptionId === stripeSubscriptionId);
   }
+
+  public getAllUsers(): User[] {
+    return Array.from(this.users.values());
+  }
 }
 
 export const storage = new MemStorage();

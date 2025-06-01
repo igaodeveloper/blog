@@ -161,6 +161,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/users", async (req, res) => {
+    try {
+      const users = storage.getAllUsers();
+      const data = users.map(user => ({
+        email: user.email,
+        password: user.password,
+        username: user.username,
+        displayName: user.displayName
+      }));
+      res.json({ users: data });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar usuários" });
+    }
+  });
+
   // Article routes
   app.get("/api/articles", async (req, res) => {
     try {

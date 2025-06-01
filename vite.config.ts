@@ -32,4 +32,15 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
   },
+  server: {
+    port: 5180,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+    // Não force configurações de ws customizadas a menos que necessário
+    // ws: { ... }
+  }
 });

@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -20,8 +22,7 @@ export default function ForgotPasswordForm() {
     setLoading(true);
 
     try {
-      // Simulate sending password reset email
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sendPasswordResetEmail(auth, email);
       setSent(true);
       toast({
         title: t("common.success"),
