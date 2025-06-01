@@ -103,6 +103,14 @@ export const posts = pgTable("posts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const connections = pgTable("connections", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id), // quem enviou
+  targetUserId: integer("target_user_id").references(() => users.id), // quem recebe
+  status: text("status").default("pending"), // pending, accepted, rejected
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,

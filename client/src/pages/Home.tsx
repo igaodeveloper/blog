@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Layout/Navbar";
 import Footer from "@/components/Layout/Footer";
@@ -24,12 +24,28 @@ export default function Home() {
   const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { data: articles, isLoading } = useQuery({
-    queryKey: ["/api/articles", { limit, offset: page * limit, category: categoryFilter }],
+  const {
+    data: articlesPages,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery<Article[], Error>({
+    queryKey: ["/api/articles", { limit, category: categoryFilter }],
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await fetch(`/api/articles?limit=${limit}&offset=${Number(pageParam) * limit}${categoryFilter ? `&category=${categoryFilter}` : ""}`);
+      return res.json();
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < limit) return undefined;
+      return allPages.length;
+    },
+    initialPageParam: 0,
   });
 
-  const filteredArticles = Array.isArray(articles)
-    ? articles.filter((article: Article) =>
+  const filteredArticles: Article[] = articlesPages?.pages
+    ? (articlesPages.pages.flat() as Article[]).filter((article: Article) =>
         article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         article.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
       )
@@ -83,24 +99,21 @@ export default function Home() {
               </div>
             </motion.div>
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              {t("welcome.title")}
+              {t("home.recentArticles")}
             </h1>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              {t("welcome.subtitle")}
+              {t("home.subtitle")}
             </p>
             <Button
               size="lg"
               className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-4 text-lg font-semibold transition-all duration-300 transform hover:scale-105"
-              style={{
-                boxShadow: "0 0 20px rgba(138, 43, 226, 0.4)",
-              }}
               onClick={() => {
                 document.getElementById('articles')?.scrollIntoView({ 
                   behavior: 'smooth' 
                 });
               }}
             >
-              {t("welcome.startButton")}
+              Explorar Artigos
             </Button>
           </motion.div>
         </div>
@@ -142,7 +155,7 @@ export default function Home() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              {filteredArticles.map((article: Article, index: number) => (
+              {filteredArticles.map((article, index) => (
                 <ArticleCard
                   key={article.id}
                   article={article}
@@ -173,14 +186,15 @@ export default function Home() {
               </motion.div>
             )}
 
-            {filteredArticles.length > 0 && (
+            {hasNextPage && filteredArticles.length > 0 && (
               <div className="text-center">
                 <Button
                   variant="outline"
                   className="bg-transparent border-gray-600 text-white hover:border-purple-500 hover:bg-purple-500/10"
-                  onClick={() => setPage(page + 1)}
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
                 >
-                  {t("home.loadMore")}
+                  {isFetchingNextPage ? t("common.loading") : t("home.loadMore")}
                 </Button>
               </div>
             )}

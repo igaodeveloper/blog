@@ -466,6 +466,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ received: true });
     });
+
+    app.post("/api/stripe/cancel-subscription", async (req, res) => {
+      try {
+        // O userId deve ser enviado no corpo da requisição
+        const userId = req.body.userId;
+        if (!userId) return res.status(401).json({ message: "Não autenticado" });
+        const user = await storage.getUser(userId);
+        if (!user || !user.stripeSubscriptionId) return res.status(404).json({ message: "Assinatura não encontrada" });
+        await stripe.subscriptions.update(user.stripeSubscriptionId, { cancel_at_period_end: true });
+        await storage.updateUser(user.id, { isPremium: false });
+        res.json({ message: "Assinatura cancelada" });
+      } catch (error) {
+        res.status(400).json({ message: "Erro ao cancelar assinatura" });
+      }
+    });
   }
 
   // Video routes
@@ -516,6 +531,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const post = await storage.getPost(parseInt(req.params.id));
       if (!post) return res.status(404).json({ message: "Post not found" });
       res.json(post);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // --- ROTAS DE CONEXÃO (amizade estilo LinkedIn) ---
+  app.post("/api/connections/request", async (req, res) => {
+    try {
+      const { userId, targetUserId } = req.body;
+      if (userId === targetUserId) return res.status(400).json({ message: "Não pode se conectar consigo mesmo" });
+      const result = await storage.createConnectionRequest(userId, targetUserId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/connections/accept", async (req, res) => {
+    try {
+      const { id } = req.body;
+      const result = await storage.acceptConnectionRequest(id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/connections/reject", async (req, res) => {
+    try {
+      const { id } = req.body;
+      const result = await storage.rejectConnectionRequest(id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/connections/:userId", async (req, res) => {
+    try {
+      const connections = await storage.getUserConnections(parseInt(req.params.userId));
+      res.json(connections);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/connections/requests/:userId", async (req, res) => {
+    try {
+      const requests = await storage.getUserPendingRequests(parseInt(req.params.userId));
+      res.json(requests);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }

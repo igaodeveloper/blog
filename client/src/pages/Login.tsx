@@ -11,8 +11,13 @@ export default function Login() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (user) {
+    const hasSeenWelcome = localStorage.getItem("hasSeenWelcome");
+    if (!hasSeenWelcome) {
       setLocation("/welcome");
+      return;
+    }
+    if (user) {
+      setLocation("/");
     }
   }, [user, setLocation]);
 
@@ -28,11 +33,8 @@ export default function Login() {
           className="text-center mb-8"
         >
           <motion.div
-            className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl mx-auto flex items-center justify-center mb-4"
+            className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-lg"
             whileHover={{ scale: 1.05 }}
-            style={{
-              boxShadow: "0 0 20px rgba(138, 43, 226, 0.5)",
-            }}
           >
             <Code className="w-8 h-8 text-white" />
           </motion.div>

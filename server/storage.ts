@@ -53,6 +53,13 @@ export interface IStorage {
   createPost(insertPost: any): Promise<Article>;
   getPosts(): Promise<Article[]>;
   getPost(id: number): Promise<Article | undefined>;
+
+  // --- CONEXÕES (amizades estilo LinkedIn) ---
+  createConnectionRequest(userId: number, targetUserId: number): Promise<any>;
+  acceptConnectionRequest(id: string): Promise<any>;
+  rejectConnectionRequest(id: string): Promise<any>;
+  getUserConnections(userId: number): Promise<any[]>;
+  getUserPendingRequests(userId: number): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -443,6 +450,49 @@ export class MemStorage implements IStorage {
     this.posts = this.posts || new Map();
     return this.posts.get(id);
   }
+
+  // --- CONEXÕES (amizades estilo LinkedIn) ---
+  async createConnectionRequest(userId: number, targetUserId: number) {
+    // Cria convite se não existir
+    const existing = await this.connectionsRef
+      .where("userId", "==", userId)
+      .where("targetUserId", "==", targetUserId)
+      .get();
+    if (!existing.empty) throw new Error("Convite já enviado");
+    const doc = await this.connectionsRef.add({
+      userId,
+      targetUserId,
+      status: "pending",
+      createdAt: new Date(),
+    });
+    return { id: doc.id, userId, targetUserId, status: "pending", createdAt: new Date() };
+  }
+
+  async acceptConnectionRequest(id: string) {
+    await this.connectionsRef.doc(id).update({ status: "accepted" });
+    return { success: true };
+  }
+
+  async rejectConnectionRequest(id: string) {
+    await this.connectionsRef.doc(id).update({ status: "rejected" });
+    return { success: true };
+  }
+
+  async getUserConnections(userId: number) {
+    // Conexões aceitas
+    const sent = await this.connectionsRef.where("userId", "==", userId).where("status", "==", "accepted").get();
+    const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "accepted").get();
+    return [
+      ...sent.docs.map(d => this.docToObj(d)),
+      ...received.docs.map(d => this.docToObj(d)),
+    ];
+  }
+
+  async getUserPendingRequests(userId: number) {
+    // Convites recebidos pendentes
+    const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "pending").get();
+    return received.docs.map(d => this.docToObj(d));
+  }
 }
 
 export const storage = new MemStorage();
@@ -456,6 +506,7 @@ export class FirestoreStorage implements IStorage {
   private userStatsRef = db.collection("user_stats");
   private videosRef = db.collection("videos");
   private postsRef = db.collection("posts");
+  private connectionsRef = db.collection("connections");
 
   // Helper para converter doc para objeto com id numérico e datas
   private docToObj<T>(doc: any): T {
@@ -641,5 +692,48 @@ export class FirestoreStorage implements IStorage {
   async getPost(id: number): Promise<Article | undefined> {
     const doc = await this.postsRef.doc(String(id)).get();
     return doc.exists ? this.docToObj(doc) : undefined;
+  }
+
+  // --- CONEXÕES (amizades estilo LinkedIn) ---
+  async createConnectionRequest(userId: number, targetUserId: number) {
+    // Cria convite se não existir
+    const existing = await this.connectionsRef
+      .where("userId", "==", userId)
+      .where("targetUserId", "==", targetUserId)
+      .get();
+    if (!existing.empty) throw new Error("Convite já enviado");
+    const doc = await this.connectionsRef.add({
+      userId,
+      targetUserId,
+      status: "pending",
+      createdAt: new Date(),
+    });
+    return { id: doc.id, userId, targetUserId, status: "pending", createdAt: new Date() };
+  }
+
+  async acceptConnectionRequest(id: string) {
+    await this.connectionsRef.doc(id).update({ status: "accepted" });
+    return { success: true };
+  }
+
+  async rejectConnectionRequest(id: string) {
+    await this.connectionsRef.doc(id).update({ status: "rejected" });
+    return { success: true };
+  }
+
+  async getUserConnections(userId: number) {
+    // Conexões aceitas
+    const sent = await this.connectionsRef.where("userId", "==", userId).where("status", "==", "accepted").get();
+    const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "accepted").get();
+    return [
+      ...sent.docs.map(d => this.docToObj(d)),
+      ...received.docs.map(d => this.docToObj(d)),
+    ];
+  }
+
+  async getUserPendingRequests(userId: number) {
+    // Convites recebidos pendentes
+    const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "pending").get();
+    return received.docs.map(d => this.docToObj(d));
   }
 }

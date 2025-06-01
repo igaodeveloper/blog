@@ -4,9 +4,22 @@ import Footer from "@/components/Layout/Footer";
 import PricingCards from "@/components/Premium/PricingCards";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Premium() {
   const { t } = useTranslation();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success')) {
+      toast({
+        title: "Assinatura realizada!",
+        description: "Bem-vindo ao conteúdo premium!",
+      });
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">

@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Layout/Navbar";
@@ -15,6 +15,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { Heart, MessageCircle, Share2, ArrowLeft, Clock, User } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
+import type { Article, Comment as CommentType } from "@shared/schema";
+
+type CommentWithUser = CommentType & { user?: { avatar?: string; displayName?: string } };
 
 export default function Article() {
   const params = useParams();
@@ -25,40 +28,47 @@ export default function Article() {
   const [comment, setComment] = useState("");
   const [isLiked, setIsLiked] = useState(false);
 
-  const { data: article, isLoading } = useQuery({
+  const { data: article, isLoading } = useQuery<Article | undefined>({
     queryKey: [`/api/articles/slug/${params.slug}`],
     enabled: !!params.slug,
   });
 
-  const { data: comments } = useQuery({
+  const { data: comments = [], isLoading: isLoadingComments } = useQuery<CommentWithUser[] | undefined>({
     queryKey: [`/api/articles/${article?.id}/comments`],
     enabled: !!article?.id,
   });
 
-  const { data: likeStatus } = useQuery({
+  const { data: likeStatus } = useQuery<{ isLiked: boolean } | undefined>({
     queryKey: [`/api/articles/${article?.id}/like/${user?.id}`],
     enabled: !!article?.id && !!user?.id,
-    onSuccess: (data) => setIsLiked(data?.isLiked || false),
   });
 
+  useEffect(() => {
+    if (likeStatus) setIsLiked(likeStatus.isLiked);
+  }, [likeStatus]);
+
   const likeMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/articles/${article.id}/like`, { userId: user?.id }),
+    mutationFn: () => apiRequest("POST", `/api/articles/${article?.id}/like`, { userId: user?.id }),
     onSuccess: () => {
       setIsLiked(!isLiked);
-      queryClient.invalidateQueries([`/api/articles/${article.id}/like/${user?.id}`]);
-      queryClient.invalidateQueries([`/api/articles/slug/${params.slug}`]);
+      if (article?.id && user?.id) {
+        queryClient.invalidateQueries({ queryKey: [`/api/articles/${article.id}/like/${user.id}`] });
+      }
+      queryClient.invalidateQueries({ queryKey: [`/api/articles/slug/${params.slug}`] });
     },
   });
 
   const commentMutation = useMutation({
     mutationFn: (content: string) =>
-      apiRequest("POST", `/api/articles/${article.id}/comments`, {
+      apiRequest("POST", `/api/articles/${article?.id}/comments`, {
         content,
         userId: user?.id,
       }),
     onSuccess: () => {
       setComment("");
-      queryClient.invalidateQueries([`/api/articles/${article.id}/comments`]);
+      if (article?.id) {
+        queryClient.invalidateQueries({ queryKey: [`/api/articles/${article.id}/comments`] });
+      }
       toast({
         title: t("common.success"),
         description: "Comentário adicionado com sucesso!",
@@ -93,6 +103,7 @@ export default function Article() {
   };
 
   const handleShare = async () => {
+    if (!article) return;
     const url = window.location.href;
     if (navigator.share) {
       await navigator.share({
@@ -136,6 +147,25 @@ export default function Article() {
           <h1 className="text-2xl font-bold mb-4">Artigo não encontrado</h1>
           <Link href="/">
             <Button>Voltar ao início</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (article.isPremium && (!user || !user.isPremium)) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <Navbar />
+        <div className="pt-16 px-4 max-w-4xl mx-auto text-center py-12">
+          <h1 className="text-3xl font-bold mb-4">Conteúdo Premium</h1>
+          <p className="text-gray-400 mb-6 max-w-xl mx-auto">
+            Este artigo é exclusivo para assinantes premium. Faça upgrade para acessar todo o conteúdo!
+          </p>
+          <Link href="/premium">
+            <Button className="bg-purple-500 hover:bg-purple-600 text-white font-semibold px-8 py-3 text-lg">
+              Assinar Premium
+            </Button>
           </Link>
         </div>
       </div>
@@ -291,7 +321,7 @@ export default function Article() {
         >
           <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
             <MessageCircle className="w-6 h-6" />
-            Comentários ({comments?.length || 0})
+            Comentários ({comments.length})
           </h2>
 
           {/* Comment Form */}
@@ -339,7 +369,7 @@ export default function Article() {
 
           {/* Comments List */}
           <div className="space-y-6">
-            {comments?.map((comment: any, index: number) => (
+            {comments.map((comment, index) => (
               <motion.div
                 key={comment.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -348,7 +378,7 @@ export default function Article() {
                 className="flex gap-4 p-4 bg-gray-800 rounded-lg"
               >
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={comment.user?.avatar} alt={comment.user?.displayName} />
+                  <AvatarImage src={comment.user?.avatar || ""} alt={comment.user?.displayName || "Usuário"} />
                   <AvatarFallback>
                     {comment.user?.displayName?.charAt(0).toUpperCase() || "U"}
                   </AvatarFallback>
@@ -359,7 +389,7 @@ export default function Article() {
                       {comment.user?.displayName || "Usuário"}
                     </span>
                     <span className="text-sm text-gray-400">
-                      {format(new Date(comment.createdAt), "dd/MM/yyyy 'às' HH:mm")}
+                      {comment.createdAt ? format(new Date(comment.createdAt), "dd/MM/yyyy 'às' HH:mm") : ""}
                     </span>
                   </div>
                   <p className="text-gray-300">{comment.content}</p>
@@ -367,7 +397,7 @@ export default function Article() {
               </motion.div>
             ))}
 
-            {comments?.length === 0 && (
+            {comments.length === 0 && !isLoadingComments && (
               <div className="text-center py-8">
                 <MessageCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                 <p className="text-gray-400">

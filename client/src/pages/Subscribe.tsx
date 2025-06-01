@@ -187,6 +187,7 @@ export default function Subscribe() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
+  const { toast } = useToast();
 
   // Buscar preços Stripe
   const { prices: stripePrices, loading: loadingPrices, error: errorPrices } = useStripePrices();
@@ -226,6 +227,27 @@ export default function Subscribe() {
     };
     createSubscription();
   }, [user, setLocation, priceId]);
+
+  // Feedback de sucesso/erro após pagamento
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success')) {
+      toast({
+        title: "Assinatura realizada!",
+        description: "Bem-vindo ao conteúdo premium!",
+      });
+      setTimeout(() => {
+        window.location.href = "/premium";
+      }, 2000);
+    }
+    if (params.get('canceled')) {
+      toast({
+        title: "Pagamento cancelado",
+        description: "Sua assinatura não foi concluída.",
+        variant: "destructive",
+      });
+    }
+  }, []);
 
   if (!user) {
     return null;

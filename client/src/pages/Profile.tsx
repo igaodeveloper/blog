@@ -3,11 +3,24 @@ import Navbar from "@/components/Layout/Navbar";
 import Footer from "@/components/Layout/Footer";
 import ProfileView from "@/components/Profile/ProfileView";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Profile() {
   const { user } = useAuth();
+  const params = useParams();
+  const userId = params?.userId;
+  const { data: profileUser, isLoading } = useQuery({
+    queryKey: ["/api/users/", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const res = await fetch(`/api/users/${userId}`);
+      if (!res.ok) throw new Error("Usuário não encontrado");
+      return res.json();
+    },
+    enabled: !!userId,
+  });
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -49,7 +62,11 @@ export default function Profile() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <ProfileView />
+            {userId ? (
+              isLoading ? <div>Carregando...</div> : <ProfileView profileUser={profileUser} />
+            ) : (
+              <ProfileView />
+            )}
           </motion.div>
         )}
       </div>
@@ -58,3 +75,5 @@ export default function Profile() {
     </div>
   );
 }
+
+export const route = "/profile/:userId?";

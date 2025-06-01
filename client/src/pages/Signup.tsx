@@ -12,7 +12,12 @@ export default function Signup() {
 
   useEffect(() => {
     if (user) {
-      setLocation("/welcome");
+      const hasSeenWelcome = localStorage.getItem("hasSeenWelcome");
+      if (!hasSeenWelcome) {
+        setLocation("/welcome");
+      } else {
+        setLocation("/");
+      }
     }
   }, [user, setLocation]);
 

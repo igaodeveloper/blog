@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Camera, Mail, Github, Linkedin, Globe, Heart, MessageCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import AvatarUploader from "./AvatarUploader";
@@ -14,19 +14,109 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from 
 import { useToast } from "@/hooks/use-toast";
 import type { UserStats } from "@shared/schema";
 
-export default function ProfileView() {
+export default function ProfileView({ profileUser }: { profileUser?: any } = {}) {
   const { user, setUser } = useAuth();
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [isAvatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const viewingOwnProfile = !profileUser || (user && profileUser && user.id === profileUser.id);
+  const displayedUser = profileUser || user;
 
   const { data: userStats } = useQuery<UserStats | undefined>({
-    queryKey: [`/api/users/${user?.id}/stats`],
-    enabled: !!user,
+    queryKey: [`/api/users/${displayedUser?.id}/stats`],
+    enabled: !!displayedUser?.id,
   });
 
-  if (!user) {
+  // Conexões
+  const { data: connections = [], refetch: refetchConnections } = useQuery({
+    queryKey: ["/api/connections/" + displayedUser?.id],
+    queryFn: async () => {
+      if (!displayedUser?.id) return [];
+      const res = await fetch(`/api/connections/${displayedUser.id}`);
+      return res.json();
+    },
+    enabled: !!displayedUser?.id,
+  });
+  // Convites recebidos (apenas se for o próprio perfil)
+  const { data: pendingRequests = [], refetch: refetchRequests } = useQuery({
+    queryKey: ["/api/connections/requests/" + displayedUser?.id],
+    queryFn: async () => {
+      if (!displayedUser?.id) return [];
+      const res = await fetch(`/api/connections/requests/${displayedUser.id}`);
+      return res.json();
+    },
+    enabled: viewingOwnProfile && !!displayedUser?.id,
+  });
+
+  // Estado do convite entre user e profileUser
+  const { data: myConnection, refetch: refetchMyConnection } = useQuery({
+    queryKey: ["/api/connections/status", user?.id, displayedUser?.id],
+    queryFn: async () => {
+      if (!user?.id || !displayedUser?.id || user.id === displayedUser.id) return null;
+      const res = await fetch(`/api/connections/${user.id}`);
+      const all = await res.json();
+      return all.find((c: any) => (c.userId === user.id && c.targetUserId === displayedUser.id) || (c.userId === displayedUser.id && c.targetUserId === user.id));
+    },
+    enabled: !!user?.id && !!displayedUser?.id && user.id !== displayedUser.id,
+  });
+
+  // Mutations
+  const sendRequest = useMutation({
+    mutationFn: async () => {
+      if (!user || !displayedUser) throw new Error("Usuário não autenticado");
+      const res = await fetch("/api/connections/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, targetUserId: displayedUser.id }),
+      });
+      if (!res.ok) throw new Error("Erro ao enviar convite");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Convite enviado!" });
+      refetchMyConnection();
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+  const acceptRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch("/api/connections/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error("Erro ao aceitar convite");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Conexão aceita!" });
+      refetchConnections();
+      refetchRequests();
+      refetchMyConnection();
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+  const rejectRequest = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch("/api/connections/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error("Erro ao recusar convite");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Convite recusado" });
+      refetchRequests();
+      refetchMyConnection();
+    },
+    onError: (e: any) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  if (!displayedUser) {
     return (
       <div className="text-center py-8">
         <p className="text-gray-400">Faça login para ver seu perfil.</p>
@@ -35,9 +125,9 @@ export default function ProfileView() {
   }
 
   async function handleAvatarChange(newAvatar: string) {
-    if (!user) return;
+    if (!displayedUser) return;
     try {
-      const res = await fetch(`/api/users/${user.id}`, {
+      const res = await fetch(`/api/users/${displayedUser.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatar: newAvatar }),
@@ -58,9 +148,9 @@ export default function ProfileView() {
         <div className="absolute -bottom-8 left-8">
           <div className="relative">
             <Avatar className="w-20 h-20 border-4 border-gray-900 bg-gray-900">
-              <AvatarImage src={user.avatar || ""} alt={user.displayName} />
+              <AvatarImage src={displayedUser.avatar || ""} alt={displayedUser.displayName} />
               <AvatarFallback className="text-2xl">
-                {user.displayName.charAt(0).toUpperCase()}
+                {displayedUser.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <Dialog open={isAvatarDialogOpen} onOpenChange={setAvatarDialogOpen}>
@@ -73,7 +163,7 @@ export default function ProfileView() {
                 <DialogHeader>
                   <DialogTitle className="sr-only">Alterar avatar</DialogTitle>
                 </DialogHeader>
-                <AvatarUploader currentAvatar={user.avatar || undefined} displayName={user.displayName} onAvatarChange={async (avatar) => { await handleAvatarChange(avatar); setAvatarDialogOpen(false); }} />
+                <AvatarUploader currentAvatar={displayedUser.avatar || undefined} displayName={displayedUser.displayName} onAvatarChange={async (avatar) => { await handleAvatarChange(avatar); setAvatarDialogOpen(false); }} />
               </DialogContent>
             </Dialog>
           </div>
@@ -84,13 +174,13 @@ export default function ProfileView() {
         {/* Profile Info */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <h2 className="text-2xl font-bold text-white">{user.displayName}</h2>
-            {user.isPremium && (
+            <h2 className="text-2xl font-bold text-white">{displayedUser.displayName}</h2>
+            {displayedUser.isPremium && (
               <Badge className="bg-purple-500/20 text-purple-400 border-purple-500">
                 PREMIUM
               </Badge>
             )}
-            <EditProfileDialog user={user} onProfileUpdated={setUser}>
+            <EditProfileDialog user={displayedUser} onProfileUpdated={setUser}>
               <Button
                 variant="outline"
                 size="sm"
@@ -101,35 +191,137 @@ export default function ProfileView() {
             </EditProfileDialog>
           </div>
           
+          {/* Seção de Assinatura Premium */}
+          {viewingOwnProfile && (
+            <div className="mb-6 p-4 rounded-xl bg-gray-800 border border-purple-700">
+              <div className="flex items-center gap-3 mb-2">
+                <Badge className="bg-purple-500/20 text-purple-400 border-purple-500">Assinatura</Badge>
+                {user?.isPremium ? (
+                  <span className="text-green-400 font-semibold">Ativa</span>
+                ) : (
+                  <span className="text-red-400 font-semibold">Inativa</span>
+                )}
+              </div>
+              {user?.isPremium ? (
+                <>
+                  <p className="text-gray-300 mb-2">Você é assinante premium! Aproveite todos os benefícios exclusivos.</p>
+                  <Button
+                    variant="outline"
+                    className="border-red-500 text-red-400 hover:bg-red-900/20"
+                    onClick={async () => {
+                      // Chamar API para cancelar assinatura
+                      const res = await fetch("/api/stripe/cancel-subscription", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ userId: user.id })
+                      });
+                      if (res.ok) {
+                        setUser({ ...user, isPremium: false });
+                        toast({ title: "Assinatura cancelada", description: "Sua assinatura premium foi cancelada." });
+                      } else {
+                        toast({ title: "Erro ao cancelar", description: "Tente novamente mais tarde.", variant: "destructive" });
+                      }
+                    }}
+                  >
+                    Cancelar Assinatura
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-300 mb-2">Assine para desbloquear conteúdos e benefícios premium.</p>
+                  <Button className="bg-purple-500 hover:bg-purple-600 text-white font-semibold" asChild>
+                    <a href="/premium">Assinar Premium</a>
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+          
           <p className="text-gray-400 mb-4">
-            {user.bio || "Full Stack Developer apaixonado por React, Node.js e tecnologias emergentes. Sempre aprendendo e compartilhando conhecimento."}
+            {displayedUser.bio || "Full Stack Developer apaixonado por React, Node.js e tecnologias emergentes. Sempre aprendendo e compartilhando conhecimento."}
           </p>
           
           <div className="flex flex-wrap gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-2">
               <Mail className="w-4 h-4" />
-              {user.email}
+              {displayedUser.email}
             </span>
-            {user.github && (
+            {displayedUser.github && (
               <span className="flex items-center gap-2">
                 <Github className="w-4 h-4" />
-                {user.github}
+                {displayedUser.github}
               </span>
             )}
-            {user.linkedin && (
+            {displayedUser.linkedin && (
               <span className="flex items-center gap-2">
                 <Linkedin className="w-4 h-4" />
-                {user.linkedin}
+                {displayedUser.linkedin}
               </span>
             )}
-            {user.website && (
+            {displayedUser.website && (
               <span className="flex items-center gap-2">
                 <Globe className="w-4 h-4" />
-                {user.website}
+                {displayedUser.website}
               </span>
             )}
           </div>
         </div>
+
+        {/* Botão de conexão estilo LinkedIn */}
+        {!viewingOwnProfile && user && displayedUser && user.id !== displayedUser.id && (
+          <div className="mb-4">
+            {myConnection ? (
+              myConnection.status === "pending" ? (
+                myConnection.userId === user.id ? (
+                  <Button disabled variant="outline" className="border-gray-600 text-gray-400">Convite enviado</Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button onClick={() => acceptRequest.mutate(myConnection.id)} className="bg-purple-500 hover:bg-purple-600">Aceitar conexão</Button>
+                    <Button onClick={() => rejectRequest.mutate(myConnection.id)} variant="outline" className="border-gray-600 text-gray-400">Recusar</Button>
+                  </div>
+                )
+              ) : myConnection.status === "accepted" ? (
+                <Button disabled className="bg-green-600">Conectado</Button>
+              ) : (
+                <Button disabled variant="outline" className="border-gray-600 text-gray-400">Convite recusado</Button>
+              )
+            ) : (
+              <Button onClick={() => sendRequest.mutate()} className="bg-purple-500 hover:bg-purple-600">Conectar</Button>
+            )}
+          </div>
+        )}
+
+        {/* Lista de conexões */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-2 text-white">Conexões</h3>
+          {connections.length === 0 ? (
+            <p className="text-gray-400">Nenhuma conexão ainda.</p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {connections.map((c: any) => (
+                <div key={c.id} className="flex items-center gap-2 bg-gray-800 rounded px-3 py-1">
+                  <span className="text-sm text-white">{c.userId === displayedUser.id ? `Conectado com #${c.targetUserId}` : `Conectado com #${c.userId}`}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Convites recebidos (apenas no próprio perfil) */}
+        {viewingOwnProfile && pendingRequests.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-2 text-white">Convites recebidos</h3>
+            <div className="flex flex-col gap-2">
+              {pendingRequests.map((req: any) => (
+                <div key={req.id} className="flex items-center gap-2 bg-gray-800 rounded px-3 py-1">
+                  <span className="text-sm text-white">Convite de usuário #{req.userId}</span>
+                  <Button size="sm" className="bg-purple-500 hover:bg-purple-600" onClick={() => acceptRequest.mutate(req.id)}>Aceitar</Button>
+                  <Button size="sm" variant="outline" className="border-gray-600 text-gray-400" onClick={() => rejectRequest.mutate(req.id)}>Recusar</Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
