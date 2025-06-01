@@ -16,8 +16,11 @@ import { Heart, MessageCircle, Share2, ArrowLeft, Clock, User } from "lucide-rea
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
 import type { Article, Comment as CommentType } from "@shared/schema";
+import { loadStripe } from "@stripe/stripe-js";
 
 type CommentWithUser = CommentType & { user?: { avatar?: string; displayName?: string } };
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
 
 export default function Article() {
   const params = useParams();
@@ -27,6 +30,10 @@ export default function Article() {
   const queryClient = useQueryClient();
   const [comment, setComment] = useState("");
   const [isLiked, setIsLiked] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [loadingPurchase, setLoadingPurchase] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   const { data: article, isLoading } = useQuery<Article | undefined>({
     queryKey: [`/api/articles/slug/${params.slug}`],
@@ -46,6 +53,17 @@ export default function Article() {
   useEffect(() => {
     if (likeStatus) setIsLiked(likeStatus.isLiked);
   }, [likeStatus]);
+
+  useEffect(() => {
+    async function checkPurchase() {
+      if (user && article?.isPremium && article.id) {
+        const res = await fetch(`/api/users/${user.id}/purchases`);
+        const purchases = await res.json();
+        setHasPurchased(purchases.some((p: any) => p.articleId === article.id));
+      }
+    }
+    checkPurchase();
+  }, [user, article]);
 
   const likeMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/articles/${article?.id}/like`, { userId: user?.id }),
@@ -120,6 +138,36 @@ export default function Article() {
     }
   };
 
+  async function handleBuyArticle() {
+    if (!article) return;
+    setLoadingPurchase(true);
+    try {
+      const res = await fetch("/api/purchase-article", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ articleId: article.id }),
+      });
+      const data = await res.json();
+      setClientSecret(data.clientSecret);
+      setShowPayment(true);
+    } finally {
+      setLoadingPurchase(false);
+    }
+  }
+
+  async function handleStripePayment() {
+    const stripe = await stripePromise;
+    if (!stripe || !clientSecret) return;
+    const { error } = await stripe.confirmCardPayment(clientSecret);
+    if (!error) {
+      setHasPurchased(true);
+      setShowPayment(false);
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black text-white">
@@ -153,7 +201,7 @@ export default function Article() {
     );
   }
 
-  if (article.isPremium && (!user || !user.isPremium)) {
+  if (article.isPremium && (!user || (!user.isPremium && !hasPurchased))) {
     return (
       <div className="min-h-screen bg-black text-white">
         <Navbar />
@@ -167,6 +215,18 @@ export default function Article() {
               Assinar Premium
             </Button>
           </Link>
+          <div className="my-6">
+            <Button onClick={handleBuyArticle} disabled={loadingPurchase} className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-8 py-3 text-lg ml-4">
+              {loadingPurchase ? "Processando..." : "Comprar este artigo (R$9,90)"}
+            </Button>
+          </div>
+          {showPayment && clientSecret && (
+            <div className="mt-8">
+              <Button onClick={handleStripePayment} className="bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-3 text-lg">
+                Finalizar Pagamento
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );

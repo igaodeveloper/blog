@@ -20,6 +20,16 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
+
+  // Detecta resposta HTML inesperada
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("text/html")) {
+    const text = await res.text();
+    if (text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html")) {
+      throw new Error("Resposta inesperada do servidor. Verifique sua conexão ou tente novamente mais tarde.");
+    }
+  }
+
   return res;
 }
 

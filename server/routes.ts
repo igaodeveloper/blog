@@ -529,6 +529,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           break;
         }
+        case 'payment_intent.succeeded': {
+          if (event.data.object.metadata?.type === 'single-article') {
+            const userId = Number(event.data.object.metadata.userId);
+            const articleId = Number(event.data.object.metadata.articleId);
+            await storage.createPurchase({ userId, articleId });
+          }
+          break;
+        }
         default:
           // Unexpected event type
           break;
@@ -548,6 +556,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ message: "Assinatura cancelada" });
       } catch (error) {
         res.status(400).json({ message: "Erro ao cancelar assinatura" });
+      }
+    });
+
+    app.post("/api/purchase-article", authMiddleware, async (req, res) => {
+      try {
+        const { articleId } = req.body;
+        const userId = (req as any).user.id;
+        if (!articleId) return res.status(400).json({ message: "articleId é obrigatório" });
+        const article = await storage.getArticle(articleId);
+        if (!article || !article.isPremium) return res.status(404).json({ message: "Artigo premium não encontrado" });
+        // Verifica se já comprou
+        const alreadyPurchased = await storage.hasUserPurchasedArticle(userId, articleId);
+        if (alreadyPurchased) return res.status(400).json({ message: "Artigo já comprado" });
+        // Defina o valor do artigo premium (exemplo: 990 = R$9,90)
+        const amount = 990;
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount,
+          currency: "brl",
+          metadata: { userId: String(userId), articleId: String(articleId), type: "single-article" },
+        });
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } catch (error: any) {
+        res.status(500).json({ message: "Erro ao criar pagamento avulso: " + error.message });
       }
     });
   }

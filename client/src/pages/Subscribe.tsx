@@ -278,6 +278,7 @@ export default function Subscribe() {
   }
 
   if (error) {
+    const isServerError = error.includes("Resposta inesperada do servidor");
     return (
       <div className="min-h-screen bg-black text-white">
         <Navbar />
@@ -288,14 +289,14 @@ export default function Subscribe() {
             transition={{ duration: 0.6 }}
             className="text-center max-w-md mx-auto"
           >
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">❌</span>
+            <div className={`w-16 h-16 ${isServerError ? 'bg-yellow-500/20' : 'bg-red-500/20'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+              <span className="text-2xl">{isServerError ? '⚠️' : '❌'}</span>
             </div>
             <h2 className="text-2xl font-bold mb-4 text-white">
-              Erro na Assinatura
+              {isServerError ? 'Erro de Conexão com o Servidor' : 'Erro na Assinatura'}
             </h2>
             <p className="text-gray-400 mb-6">
-              {error}
+              {isServerError ? 'Não foi possível conectar ao servidor de pagamentos. Tente novamente mais tarde ou contate o suporte.' : error}
             </p>
             <div className="flex gap-4 justify-center">
               <Button

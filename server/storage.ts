@@ -1,4 +1,4 @@
-import { users, articles, comments, likes, chatMessages, userStats, type User, type InsertUser, type Article, type InsertArticle, type Comment, type InsertComment, type InsertChatMessage, type ChatMessage, type UserStats } from "@shared/schema";
+import { users, articles, comments, likes, chatMessages, userStats, type User, type InsertUser, type Article, type InsertArticle, type Comment, type InsertComment, type InsertChatMessage, type ChatMessage, type UserStats, type Purchase, type InsertPurchase } from "@shared/schema";
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import OpenAI from "openai";
@@ -63,6 +63,11 @@ export interface IStorage {
   rejectConnectionRequest(id: string): Promise<any>;
   getUserConnections(userId: number): Promise<any[]>;
   getUserPendingRequests(userId: number): Promise<any[]>;
+
+  // Purchases (article purchases)
+  createPurchase(purchase: InsertPurchase): Promise<Purchase>;
+  getUserPurchases(userId: number): Promise<Purchase[]>;
+  hasUserPurchasedArticle(userId: number, articleId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -78,6 +83,8 @@ export class MemStorage implements IStorage {
   private currentChatMessageId: number;
   private videos: Map<number, Article> | undefined;
   private posts: Map<number, Article> | undefined;
+  private purchases: Map<number, Purchase> = new Map();
+  private currentPurchaseId: number = 1;
 
   constructor() {
     this.users = new Map();
@@ -546,6 +553,25 @@ export class MemStorage implements IStorage {
     // Em memória: não implementado
     return [];
   }
+
+  async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
+    const newPurchase: Purchase = {
+      id: this.currentPurchaseId++,
+      userId: typeof purchase.userId === 'undefined' ? null : Number(purchase.userId),
+      articleId: typeof purchase.articleId === 'undefined' ? null : Number(purchase.articleId),
+      createdAt: new Date(),
+    };
+    this.purchases.set(newPurchase.id, newPurchase);
+    return newPurchase;
+  }
+
+  async getUserPurchases(userId: number): Promise<Purchase[]> {
+    return Array.from(this.purchases.values()).filter(p => p.userId === userId);
+  }
+
+  async hasUserPurchasedArticle(userId: number, articleId: number): Promise<boolean> {
+    return Array.from(this.purchases.values()).some(p => p.userId === userId && p.articleId === articleId);
+  }
 }
 
 export const storage = new MemStorage();
@@ -560,20 +586,21 @@ export class FirestoreStorage implements IStorage {
   private videosRef = db.collection("videos");
   private postsRef = db.collection("posts");
   private connectionsRef = db.collection("connections");
+  private purchasesRef = db.collection("purchases");
 
   // Helper para converter doc para objeto com id numérico e datas
   private docToObj<T>(doc: any): T {
     const data = doc.data();
-    // Converte id para number se possível
     let id: number | string = doc.id;
     if (!isNaN(Number(id))) id = Number(id);
-    // Converte datas string/timestamp para Date
     const convertDates = (obj: any) => {
       for (const key in obj) {
         if (obj[key] && (obj[key]._seconds || obj[key] instanceof Date)) {
           obj[key] = obj[key] instanceof Date ? obj[key] : new Date(obj[key]._seconds * 1000);
         }
       }
+      if ('userId' in obj) obj.userId = typeof obj.userId === 'undefined' ? null : Number(obj.userId);
+      if ('articleId' in obj) obj.articleId = typeof obj.articleId === 'undefined' ? null : Number(obj.articleId);
       return obj;
     };
     return convertDates({ ...data, id }) as T;
@@ -789,6 +816,30 @@ export class FirestoreStorage implements IStorage {
     // Convites recebidos pendentes
     const received = await this.connectionsRef.where("targetUserId", "==", userId).where("status", "==", "pending").get();
     return received.docs.map(d => this.docToObj(d));
+  }
+
+  // Purchases (article purchases)
+  async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
+    // Garante que userId e articleId nunca sejam undefined
+    const safePurchase = {
+      ...purchase,
+      userId: typeof purchase.userId === 'undefined' ? null : Number(purchase.userId),
+      articleId: typeof purchase.articleId === 'undefined' ? null : Number(purchase.articleId),
+      createdAt: new Date(),
+    };
+    const docRef = await this.purchasesRef.add(safePurchase);
+    const doc = await docRef.get();
+    return this.docToObj<Purchase>(doc);
+  }
+
+  async getUserPurchases(userId: number): Promise<Purchase[]> {
+    const snapshot = await this.purchasesRef.where("userId", "==", userId).get();
+    return snapshot.docs.map(doc => this.docToObj<Purchase>(doc));
+  }
+
+  async hasUserPurchasedArticle(userId: number, articleId: number): Promise<boolean> {
+    const snapshot = await this.purchasesRef.where("userId", "==", userId).where("articleId", "==", articleId).get();
+    return !snapshot.empty;
   }
 }
 
