@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDsYo9nuRK5cAhnVAUPLrZhumLohsw_MXQ",
-  authDomain: "blog-abe64.firebaseapp.com",
-  projectId: "blog-abe64",
-  storageBucket: "blog-abe64.appspot.com",
-  messagingSenderId: "895923440924",
-  appId: "1:895923440924:web:8a70e2b124e3be6edc3ed9",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: "G-XMQBHMTH1S"
 };
 

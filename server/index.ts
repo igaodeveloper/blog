@@ -1,13 +1,38 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { FirestoreStorage } from "./storage";
+// @ts-ignore
+import cors from "cors";
+// @ts-ignore
+import winston from "winston";
+// @ts-ignore
+import helmet from "helmet";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 const storage = new FirestoreStorage();
+
+const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+  ],
+});
+
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true,
+}));
+
+app.use(helmet());
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -32,12 +57,28 @@ app.use((req, res, next) => {
         logLine = logLine.slice(0, 79) + "…";
       }
 
-      log(logLine);
+      logger.info(logLine);
     }
   });
 
   next();
 });
+
+if (process.env.NODE_ENV === 'production') {
+  const requiredEnv = [
+    'FIREBASE_PROJECT_ID',
+    'OPENAI_API_KEY',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_PRICE_ID',
+    'STRIPE_WEBHOOK_SECRET',
+    'DATABASE_URL',
+    'JWT_SECRET',
+  ];
+  const missing = requiredEnv.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error('Missing required environment variables: ' + missing.join(', '));
+  }
+}
 
 (async () => {
   const server = await registerRoutes(app);

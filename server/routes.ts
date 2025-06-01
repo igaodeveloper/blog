@@ -5,6 +5,13 @@ import Stripe from "stripe";
 import { storage, gerarArtigoOriginalIA } from "./storage";
 import { insertUserSchema, insertCommentSchema, insertChatMessageSchema } from "@shared/schema";
 import express from "express";
+// @ts-ignore
+import bcrypt from "bcrypt";
+// @ts-ignore
+import jwt from "jsonwebtoken";
+// @ts-ignore
+import rateLimit from "express-rate-limit";
+import type { Request, Response, NextFunction } from "express";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not found, payment features will be disabled');
@@ -13,6 +20,14 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-05-28.basil",
 }) : null;
+
+const JWT_SECRET = process.env.JWT_SECRET || "changeme";
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,
+  message: { message: "Too many requests, please try again later." },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -89,8 +104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User already exists" });
       }
 
-      const user = await storage.createUser(userData);
-      res.json({ user: { ...user, password: undefined } });
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const user = await storage.createUser({ ...userData, password: hashedPassword });
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+      res.json({ user: { ...user, password: undefined }, token });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -101,11 +118,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { email, password } = req.body;
       const user = await storage.getUserByEmail(email);
       
-      if (!user || user.password !== password) {
+      if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      res.json({ user: { ...user, password: undefined } });
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+      res.json({ user: { ...user, password: undefined }, token });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -145,7 +163,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User routes
-  app.get("/api/users/:id", async (req, res) => {
+  function authMiddleware(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) return res.status(401).json({ message: "No token provided" });
+    const token = authHeader.split(" ")[1];
+    jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+      if (err) return res.status(401).json({ message: "Invalid token" });
+      (req as any).user = decoded;
+      next();
+    });
+  }
+
+  app.get("/api/users/:id", authMiddleware, async (req, res) => {
     try {
       const user = await storage.getUser(parseInt(req.params.id));
       if (!user) {
@@ -157,9 +186,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", async (req, res) => {
+  app.patch("/api/users/:id", authMiddleware, async (req, res) => {
     try {
       const updates = req.body;
+      if (updates.password) {
+        updates.password = await bcrypt.hash(updates.password, 10);
+      }
       const user = await storage.updateUser(parseInt(req.params.id), updates);
       res.json({ ...user, password: undefined });
     } catch (error: any) {
@@ -167,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id/stats", async (req, res) => {
+  app.get("/api/users/:id/stats", authMiddleware, async (req, res) => {
     try {
       const stats = await storage.getUserStats(parseInt(req.params.id));
       res.json(stats);
@@ -176,12 +208,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users", async (req, res) => {
+  app.get("/api/users", authMiddleware, async (req, res) => {
     try {
       const users = storage.getAllUsers();
       const data = users.map(user => ({
         email: user.email,
-        password: user.password,
         username: user.username,
         displayName: user.displayName
       }));
